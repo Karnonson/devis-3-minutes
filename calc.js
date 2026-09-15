@@ -62,9 +62,24 @@
     return signe + entiers + ',' + cents + ' €';
   }
 
+  // Durée de validité tapée (« 30 ») → nombre de jours entier de 1 à 365 ; sinon null.
+  function lireJours(texte) {
+    const t = String(texte == null ? '' : texte).trim();
+    return /^\d{1,3}$/.test(t) && Number(t) >= 1 && Number(t) <= 365 ? Number(t) : null;
+  }
+
+  // « 2026-09-15 » + 30 jours → « 2026-10-15 » (calendrier, sans heure ni fuseau).
+  function ajouterJours(iso, jours) {
+    const [a, m, j] = String(iso).split('-').map(Number);
+    const d = new Date(Date.UTC(a, m - 1, j + jours));
+    const deux = (n) => String(n).padStart(2, '0');
+    return d.getUTCFullYear() + '-' + deux(d.getUTCMonth() + 1) + '-' + deux(d.getUTCDate());
+  }
+
   const api = {
     lireCentiemes: lireCentiemes, lirePourcentage: lirePourcentage, totalLigne: totalLigne,
     totaux: totaux, formatEuros: formatEuros, formatPourcentage: formatPourcentage,
+    lireJours: lireJours, ajouterJours: ajouterJours,
   };
   if (typeof module === 'object' && module.exports) module.exports = api;
   else racine.Calc = api;

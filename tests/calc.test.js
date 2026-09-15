@@ -149,3 +149,14 @@ test('remise et acompte en pourcentage décimal, bornés de 0 à 100', () => {
   assert.equal(Calc.lirePourcentage(''), 0);
   for (const refuse of ['101', '-5', '10,125', 'abc']) assert.equal(Calc.lirePourcentage(refuse), null, refuse);
 });
+
+test('« Valable jusqu\'au » : date du devis plus la durée de validité, fin de mois et année bissextile comprises', () => {
+  assert.equal(Calc.ajouterJours('2026-09-15', 30), '2026-10-15');
+  assert.equal(Calc.ajouterJours('2026-10-06', 30), '2026-11-05');
+  assert.equal(Calc.ajouterJours('2027-01-31', 30), '2027-03-02');
+  assert.equal(Calc.ajouterJours('2028-02-15', 14), '2028-02-29');
+  assert.equal(Calc.ajouterJours('2026-12-20', 30), '2027-01-19');
+  assert.equal(Calc.lireJours('30'), 30);
+  assert.equal(Calc.lireJours(' 365 '), 365);
+  for (const refuse of ['0', '366', '1,5', '-3', 'abc', '']) assert.equal(Calc.lireJours(refuse), null, refuse);
+});

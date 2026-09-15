@@ -177,6 +177,15 @@ class Onglet {
     }
   }
 
+  // Frappe touche par touche dans la case qui a le curseur (chiffres d'une date : 06102026).
+  async touches(texte) {
+    for (const c of texte) {
+      const k = { key: c, text: c, code: /\d/.test(c) ? 'Digit' + c : undefined, windowsVirtualKeyCode: c.toUpperCase().charCodeAt(0) };
+      await this.envoyer('Input.dispatchKeyEvent', { type: 'keyDown', ...k });
+      await this.envoyer('Input.dispatchKeyEvent', { type: 'keyUp', ...k });
+    }
+  }
+
   async capture(fichier) {
     const { data } = await this.envoyer('Page.captureScreenshot', { format: 'png' });
     fs.mkdirSync(path.dirname(fichier), { recursive: true });

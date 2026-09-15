@@ -86,6 +86,31 @@
         </fieldset>
 
         <fieldset class="bloc">
+          <legend>Valeurs habituelles</legend>
+          <p class="aide reglages-aide-bloc">Reprises par chaque nouveau devis, où elles restent modifiables.</p>
+          <div class="champ">
+            <span id="reglage-tva-libelle">TVA</span>
+            <div class="choix-segments" id="reglage-tva" role="radiogroup" aria-labelledby="reglage-tva-libelle">
+              <label><input type="radio" name="reglage-tva" value="20"><span>20&nbsp;%</span></label>
+              <label><input type="radio" name="reglage-tva" value="10"><span>10&nbsp;%</span></label>
+              <label><input type="radio" name="reglage-tva" value="0"><span>0&nbsp;%</span></label>
+            </div>
+          </div>
+          <div class="champs-cote">
+            <label class="champ">
+              <span>Acompte (%) <em>du TTC</em></span>
+              <input type="text" inputmode="decimal" data-reglage="acompte">
+              <small class="aide" data-aide="acompte" hidden>Un pourcentage de 0 à 100.</small>
+            </label>
+            <label class="champ">
+              <span>Validité (jours)</span>
+              <input type="text" inputmode="numeric" data-reglage="validite">
+              <small class="aide" data-aide="validite" hidden>Un nombre de jours, de 1 à 365.</small>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="bloc">
           <legend>Numérotation</legend>
           <label class="champ champ-court">
             <span>Prochain numéro</span>
@@ -163,6 +188,25 @@
               <small class="aide" id="acompte-aide" hidden>Un pourcentage de 0 à 100.</small>
             </label>
           </div>
+        </fieldset>
+
+        <fieldset class="bloc">
+          <legend>Date, validité et conditions</legend>
+          <div class="champs-cote">
+            <label class="champ">
+              <span>Date du devis</span>
+              <input type="date" id="devis-date" required>
+            </label>
+            <label class="champ">
+              <span>Validité (jours)</span>
+              <input type="text" inputmode="numeric" id="validite" placeholder="30">
+            </label>
+          </div>
+          <p class="aide" id="validite-apercu"></p>
+          <label class="champ champ-conditions">
+            <span>Conditions <em>pour ce devis seulement</em></span>
+            <textarea id="conditions" rows="6"></textarea>
+          </label>
         </fieldset>
       </form>
 

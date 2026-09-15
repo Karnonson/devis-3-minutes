@@ -4,10 +4,11 @@
   'use strict';
 
   const TITRE_PAGE = document.title;
-  // Valeurs de départ d'un nouveau devis, en attendant qu'elles viennent des réglages (tranche 05).
+  // Valeurs habituelles de départ des réglages ; aussi celles d'un devis créé avant qu'elles existent.
   const TAUX_TVA = 20;
   const TAUX_POSSIBLES = [20, 10, 0];
   const ACOMPTE = '30';
+  const VALIDITE = '30';
 
   const $ = (id) => document.getElementById(id);
   const ecrans = { liste: $('liste'), reglages: $('reglages'), devis: $('devis') };
@@ -92,12 +93,27 @@
 
   function lireReglages() {
     const r = lire(CLE_REGLAGES, null);
-    const base = { conditions: MODELE_CONDITIONS };
+    const base = { conditions: MODELE_CONDITIONS, acompte: ACOMPTE, validite: VALIDITE };
     COORDONNEES.forEach((k) => { base[k] = ''; });
     if (r && typeof r === 'object') {
       Object.keys(base).forEach((k) => { if (typeof r[k] === 'string') base[k] = r[k]; });
     }
+    base.tva = r && TAUX_POSSIBLES.indexOf(r.tva) !== -1 ? r.tva : TAUX_TVA;
     return base;
+  }
+
+  // Acompte et validité habituels : gardés tels que tapés, entourés en rouge s'ils sont illisibles.
+  const CONTROLES_REGLAGES = {
+    acompte: (t) => Calc.lirePourcentage(t) !== null,
+    validite: (t) => Calc.lireJours(t) !== null,
+  };
+
+  function marquerReglage(cle, el) {
+    const refuse = !CONTROLES_REGLAGES[cle](el.value);
+    el.classList.toggle('invalide', refuse);
+    const aide = formReglages.querySelector('[data-aide="' + cle + '"]');
+    aide.hidden = !refuse;
+    aide.classList.toggle('erreur', refuse);
   }
 
   // Le premier réglage essentiel encore vide (nom, adresse, SIRET), ou null.
@@ -109,7 +125,11 @@
 
   function afficherReglages() {
     const r = lireReglages();
-    formReglages.querySelectorAll('[data-reglage]').forEach((el) => { el.value = r[el.dataset.reglage]; });
+    formReglages.querySelectorAll('[data-reglage]').forEach((el) => {
+      el.value = r[el.dataset.reglage];
+      if (CONTROLES_REGLAGES[el.dataset.reglage]) marquerReglage(el.dataset.reglage, el);
+    });
+    formReglages.querySelectorAll('#reglage-tva input').forEach((el) => { el.checked = Number(el.value) === r.tva; });
     const s = numeroSuivant(tousLesDevis());
     $('prochain-numero').value = String(s.n);
     montrerProchainNumero(false);
@@ -124,6 +144,13 @@
     if (!cle) return;
     const r = lireReglages();
     r[cle] = e.target.value;
+    ecrire(CLE_REGLAGES, r);
+    if (CONTROLES_REGLAGES[cle]) marquerReglage(cle, e.target);
+  });
+
+  $('reglage-tva').addEventListener('change', (e) => {
+    const r = lireReglages();
+    r.tva = Number(e.target.value);
     ecrire(CLE_REGLAGES, r);
   });
 
@@ -237,7 +264,7 @@
     }
     const liste = tousLesDevis();
     const maintenant = new Date();
-    // Copie des coordonnées du jour : un changement de réglages ne touche pas ce devis.
+    // Copie des coordonnées, conditions et valeurs habituelles du jour : un changement de réglages ne touche pas ce devis.
     const emetteur = {};
     COORDONNEES.forEach((k) => { emetteur[k] = reglages[k]; });
     const d = {
@@ -248,9 +275,11 @@
       client: { nom: '', contact: '', adresse: '' },
       emetteur: emetteur,
       lignes: [ligneVide()],
-      tva: TAUX_TVA,
+      validite: reglages.validite,
+      tva: reglages.tva,
       remise: '0',
-      acompte: ACOMPTE,
+      acompte: reglages.acompte,
+      conditions: reglages.conditions,
     };
     liste.push(d);
     ecrire(CLE_DEVIS, liste);
@@ -269,9 +298,16 @@
     if (TAUX_POSSIBLES.indexOf(devis.tva) === -1) devis.tva = TAUX_TVA;
     if (typeof devis.remise !== 'string') devis.remise = '0';
     if (typeof devis.acompte !== 'string') devis.acompte = ACOMPTE;
+    // Devis créé avant la tranche 05 : validité de départ, sans conditions.
+    if (typeof devis.validite !== 'string') devis.validite = VALIDITE;
+    if (typeof devis.conditions !== 'string') devis.conditions = '';
     document.querySelectorAll('#tva-choix input').forEach((el) => { el.checked = Number(el.value) === devis.tva; });
     $('remise').value = devis.remise;
     $('acompte').value = devis.acompte;
+    $('devis-date').value = devis.date;
+    $('devis-date').classList.remove('invalide');
+    $('validite').value = devis.validite;
+    $('conditions').value = devis.conditions;
     $('devis-numero-barre').textContent = devis.numero;
     afficherEcran('devis');
     dessinerLignes();
@@ -370,6 +406,26 @@
     });
   });
 
+  // Date du devis : une date incomplète est entourée en rouge et n'est pas enregistrée ; la dernière complète reste.
+  $('devis-date').addEventListener('input', (e) => {
+    const iso = e.target.value;
+    const valable = /^\d{4}-\d{2}-\d{2}$/.test(iso);
+    e.target.classList.toggle('invalide', !valable);
+    if (!valable) return;
+    devis.date = iso;
+    enregistrer();
+    rafraichir();
+  });
+
+  // Validité et conditions : gardées telles que tapées.
+  [['validite', 'validite'], ['conditions', 'conditions']].forEach(([id, cle]) => {
+    $(id).addEventListener('input', (e) => {
+      devis[cle] = e.target.value;
+      enregistrer();
+      rafraichir();
+    });
+  });
+
   // ---- Aperçu ----
 
   function echapper(texte) {
@@ -386,6 +442,13 @@
       $(cle + '-aide').hidden = !refuse;
       $(cle + '-aide').classList.toggle('erreur', refuse);
     });
+
+    // Validité : « Valable jusqu'au » calculé depuis la date du devis ; durée illisible, case rouge et aucune date.
+    const jours = Calc.lireJours(devis.validite);
+    const jusquau = jours === null ? null : dateCourte(Calc.ajouterJours(devis.date, jours));
+    $('validite').classList.toggle('invalide', jours === null);
+    $('validite-apercu').classList.toggle('erreur', jours === null);
+    $('validite-apercu').textContent = jours === null ? 'Un nombre de jours, de 1 à 365.' : 'Valable jusqu\'au ' + jusquau + '.';
 
     // Totaux de ligne dans la saisie.
     listeLignes.querySelectorAll('.ligne').forEach((li, i) => {
@@ -448,6 +511,8 @@
         '<div class="f-document">' +
           '<h1>DEVIS</h1>' +
           '<p class="f-numero">' + echapper(devis.numero) + '</p>' +
+          '<p class="f-date">Date : ' + dateCourte(devis.date) + '</p>' +
+          (jusquau ? '<p class="f-date">Valable jusqu\'au ' + jusquau + '</p>' : '') +
         '</div>' +
       '</header>' +
       '<section class="f-client">' +
@@ -463,7 +528,19 @@
         '<tbody>' + lignes + '</tbody>' +
       '</table>' +
       '<table class="f-totaux">' + totaux.join('') + '</table>' +
-      (franchise ? '<p class="f-mention-tva">TVA non applicable, art. 293 B du CGI</p>' : '');
+      (franchise ? '<p class="f-mention-tva">TVA non applicable, art. 293 B du CGI</p>' : '') +
+      // Conditions vides : ni titre ni cadre vide.
+      (devis.conditions.trim()
+        ? '<section class="f-conditions"><p class="f-etiquette">Conditions</p>' +
+          '<p class="texte-multiligne">' + echapper(devis.conditions.trim()) + '</p></section>'
+        : '') +
+      '<section class="f-accord">' +
+        '<p class="f-accord-titre">Bon pour accord</p>' +
+        '<div class="f-accord-cases">' +
+          '<div class="f-accord-case"><p class="f-etiquette">Date</p></div>' +
+          '<div class="f-accord-case f-accord-signature"><p class="f-etiquette">Signature</p></div>' +
+        '</div>' +
+      '</section>';
   }
 
   // L'aperçu garde les proportions A4 et se réduit si la place manque.

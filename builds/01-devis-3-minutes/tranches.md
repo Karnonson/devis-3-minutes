@@ -139,13 +139,27 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 **À construire :** le devis est complet de haut en bas. En haut à droite : « DEVIS », numéro, date et « Valable jusqu'au <date> » calculé ; en bas : les conditions reprises du modèle et ajustables pour ce devis, puis le cadre « Bon pour accord ». Chaque nouveau devis recopie aussi la TVA, l'acompte, la validité et les conditions des réglages du jour, et ne bouge plus quand les réglages changent.
 **Bloqué par :** 03, 04.
 **Fait quand :**
-- [ ] TVA, acompte et validité habituels se règlent (20 %, 30 %, 30 jours au départ), et un nouveau devis part avec ces valeurs. *(story 5)*
-- [ ] Un changement de réglages ne modifie aucun devis existant, brouillon compris ; seul le devis créé ensuite prend les nouvelles coordonnées et conditions. *(story 10)*
-- [ ] Un nouveau devis s'ouvre en brouillon, daté du jour, avec validité, TVA et acompte habituels, 0 % de remise, les conditions du modèle et les coordonnées du jour. *(story 20)*
-- [ ] Date du devis et durée de validité se modifient, et « Valable jusqu'au <date> » se recalcule. *(story 40)*
-- [ ] Les conditions se modifient pour ce seul devis ; le modèle des réglages reste inchangé. *(story 41)*
-- [ ] En haut de l'aperçu : coordonnées et SIRET à gauche ; « DEVIS », numéro, date et « Valable jusqu'au <date> » à droite. *(story 65)*
-- [ ] Après les totaux : les conditions, puis un cadre « Bon pour accord » avec date et signature. *(story 69)*
+- [x] TVA, acompte et validité habituels se règlent (20 %, 30 %, 30 jours au départ), et un nouveau devis part avec ces valeurs. *(story 5)*
+- [x] Un changement de réglages ne modifie aucun devis existant, brouillon compris ; seul le devis créé ensuite prend les nouvelles coordonnées et conditions. *(story 10)*
+- [x] Un nouveau devis s'ouvre en brouillon, daté du jour, avec validité, TVA et acompte habituels, 0 % de remise, les conditions du modèle et les coordonnées du jour. *(story 20)*
+- [x] Date du devis et durée de validité se modifient, et « Valable jusqu'au <date> » se recalcule. *(story 40)*
+- [x] Les conditions se modifient pour ce seul devis ; le modèle des réglages reste inchangé. *(story 41)*
+- [x] En haut de l'aperçu : coordonnées et SIRET à gauche ; « DEVIS », numéro, date et « Valable jusqu'au <date> » à droite. *(story 65)*
+- [x] Après les totaux : les conditions, puis un cadre « Bon pour accord » avec date et signature. *(story 69)*
+
+**Choisi :**
+- Réglages : un bloc « Valeurs habituelles » entre les coordonnées et la numérotation, avec la TVA sur les trois mêmes boutons « 20 % | 10 % | 0 % », « Acompte (%) » et « Validité (jours) ». Acompte et validité sont gardés tels que tapés, entourés en rouge hors de 0 à 100 % ou de 1 à 365 jours entiers, et recopiés tels quels par le devis suivant.
+- Un nouveau devis garde sa propre copie de la validité, de la TVA, de l'acompte et des conditions du jour, comme des coordonnées : les réglages ne sont lus qu'au clic sur « Nouveau devis ».
+- Écran du devis : un bloc « Date, validité et conditions » en bas de la saisie, avec la date dans le sélecteur de date de Chrome, la durée en jours, « Valable jusqu'au <date>. » écrit dessous, et les conditions dans une grande case.
+- Une date incomplète est entourée en rouge et n'est pas enregistrée : l'aperçu et la liste gardent la dernière date complète. Une durée refusée reste telle que tapée, en rouge avec « Un nombre de jours, de 1 à 365. », et l'aperçu n'affiche plus « Valable jusqu'au » tant qu'elle n'est pas corrigée.
+- « Valable jusqu'au » est la date du devis plus la durée en jours de calendrier (15/09/2026 + 30 → 15/10/2026), calcul couvert par `node --test` (fin de mois, année bissextile, bornes).
+- En haut à droite de l'aperçu : « DEVIS », le numéro, « Date : 15/09/2026 » et « Valable jusqu'au 15/10/2026 », au format de la liste.
+- Après les totaux, et la mention art. 293 B à 0 % : « Conditions » en petit titre et leur texte en petit, puis le cadre « Bon pour accord » à droite, de la largeur du bloc client, avec deux cases vides « Date » et « Signature » (voir `a-trancher.md`). Le cadre ne se coupe pas entre deux pages. Des conditions vidées n'impriment ni titre ni texte.
+- Un devis créé avant cette tranche s'ouvre avec 30 jours de validité et sans conditions ; rien n'est pris dans les réglages actuels.
+- Le contrôle automatique de la page rejoue les valeurs de départ des réglages, le nouveau devis complet, la date et la durée modifiées puis refusées, une fin de mois, les conditions ajustées pour un seul devis, et un changement de réglages qui laisse deux devis existants identiques à l'écran ; il mesure aussi la disposition (coordonnées à gauche, « DEVIS » à droite, totaux, conditions puis cadre) à l'écran et en mise en page d'impression. La date se tape au clavier après un clic sur son libellé, dans l'ordre jour, mois, année du Chrome de cet ordinateur ; `tests/chrome.js` sait maintenant taper touche par touche.
+
+**Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 25 s).
+**Fichiers :** `index.html`, `styles.css`, `app.js`, `calc.js`, `tests/calc.test.js`, `tests/page.js`, `tests/chrome.js`, `builds/01-devis-3-minutes/a-trancher.md`, `builds/01-devis-3-minutes/captures/05-reglages-valeurs.png`, `05-nouveau-devis-haut.png`, `05-nouveau-devis-bas.png`, `05-date-validite-modifiees.png`, `05-conditions-ajustees.png`, `05-validite-refusee.png`, `05-pdf.png`.
 
 ## 06 — Saisie contrôlée et PDF refusé s'il manque quelque chose
 

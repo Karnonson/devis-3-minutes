@@ -54,6 +54,10 @@ async function verifierPremiereOuverture(o) {
   assert.match(conditions, /trois fois le taux d'intérêt légal/);
   assert.match(conditions, /40 €/);
   assert.match(conditions, /Devis gratuit/);
+  // TVA, acompte et validité habituels : 20 %, 30 %, 30 jours au départ.
+  assert.equal(await o.evaluer(`document.querySelector('#reglage-tva input:checked').value`), '20');
+  assert.equal(await valeur(o, reglage('acompte')), '30');
+  assert.equal(await valeur(o, reglage('validite')), '30');
   assert.equal(await valeur(o, '#prochain-numero'), '1');
   assert.equal(await o.texte('#prochain-apercu'), `Prochain devis : ${num(1)}.`);
   assert.deepEqual(o.dialogues, []);
@@ -475,5 +479,206 @@ test('remise, TVA et acompte : l\'aperçu recalcule au centime, 2 × 450 + 3 × 
   await onglet.cliquer('#retour-liste');
   await onglet.attendreTexte('#liste-lignes', num(24));
   assert.deepEqual((await lignesDeLaListe(onglet))[0], [num(24), 'Acme SARL', AUJOURDHUI, '2 430,00 €', 'Brouillon']);
+  assert.deepEqual(onglet.erreurs, []);
+});
+
+// ---- Dates, validité, conditions et « Bon pour accord » (tranche 05) ----
+
+const deux = (n) => String(n).padStart(2, '0');
+// Date du jour décalée de n jours : [« 15/10/2026 », « 2026-10-15 »].
+function jourPlus(n) {
+  const d = new Date(Date.UTC(ANNEE, maintenant.getMonth(), maintenant.getDate() + n));
+  return [`${deux(d.getUTCDate())}/${deux(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`,
+    `${d.getUTCFullYear()}-${deux(d.getUTCMonth() + 1)}-${deux(d.getUTCDate())}`];
+}
+
+// Tape une date comme au clavier : clic sur le libellé de la case, puis les chiffres jour, mois, année.
+async function taperDate(o, jjmmaaaa) {
+  await o.cliquer('#saisie label:has(#devis-date) > span');
+  await o.touches(jjmmaaaa);
+}
+
+const rect = (o, selecteur) => o.evaluer(`(() => { const r = document.querySelector(${JSON.stringify(selecteur)}).getBoundingClientRect();
+  return { haut: r.top, bas: r.bottom, gauche: r.left, droite: r.right }; })()`);
+
+// Ordre de haut en bas de l'aperçu : totaux, conditions, « Bon pour accord » ; en-tête gauche et droite côte à côte.
+async function verifierDisposition(o) {
+  const feuille = await o.evaluer(`(() => { const f = document.querySelector('#feuille'); const s = getComputedStyle(f);
+    const r = f.getBoundingClientRect(); return { gauche: r.left + parseFloat(s.paddingLeft) * (parseFloat(f.style.zoom) || 1),
+      droite: r.right - parseFloat(s.paddingRight) * (parseFloat(f.style.zoom) || 1) }; })()`);
+  const emetteur = await rect(o, '#feuille .f-emetteur');
+  const documentDroite = await rect(o, '#feuille .f-document');
+  const totaux = await rect(o, '#feuille .f-totaux');
+  const conditions = await rect(o, '#feuille .f-conditions');
+  const accord = await rect(o, '#feuille .f-accord');
+  assert.ok(Math.abs(emetteur.gauche - feuille.gauche) <= 1, 'coordonnées à gauche');
+  assert.ok(Math.abs(documentDroite.droite - feuille.droite) <= 1, '« DEVIS » à droite');
+  assert.ok(Math.abs(emetteur.haut - documentDroite.haut) <= 1, 'en-tête sur la même hauteur');
+  assert.ok(totaux.bas <= conditions.haut, 'conditions après les totaux');
+  assert.ok(conditions.bas <= accord.haut, '« Bon pour accord » après les conditions');
+}
+
+let modele = null;
+
+test('nouveau devis : brouillon daté du jour, avec validité, TVA, acompte, conditions et coordonnées des réglages', async () => {
+  await onglet.cliquer('#ouvrir-reglages');
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  modele = await valeur(onglet, reglage('conditions'));
+  assert.match(modele, /Acompte à la commande/);
+  await onglet.cliquer('#reglages .retour');
+
+  await onglet.cliquer('#nouveau-devis');
+  await onglet.attendreTexte('#devis-numero-barre', num(25));
+  assert.equal(await valeur(onglet, '#devis-date'), jourPlus(0)[1]);
+  assert.equal(await valeur(onglet, '#validite'), '30');
+  assert.equal(await onglet.texte('#validite-apercu'), `Valable jusqu'au ${jourPlus(30)[0]}.`);
+  assert.equal(await onglet.evaluer(`document.querySelector('#tva-choix input:checked').value`), '20');
+  assert.equal(await valeur(onglet, '#remise'), '0');
+  assert.equal(await valeur(onglet, '#acompte'), '30');
+  assert.equal(await valeur(onglet, '#conditions'), modele);
+
+  // En haut : coordonnées et SIRET à gauche ; « DEVIS », numéro, date et validité à droite.
+  assert.equal(normal(await onglet.texte('#feuille .f-emetteur')).replace(/\n+/g, '\n'), 'Marie Martin EI\n8 rue du Port\n44000 Nantes\nSIRET 123 456 789 00012');
+  assert.equal(normal(await onglet.texte('#feuille .f-document')).replace(/\n+/g, '\n'),
+    `DEVIS\n${num(25)}\nDate : ${AUJOURDHUI}\nValable jusqu'au ${jourPlus(30)[0]}`);
+
+  // Après les totaux : les conditions du modèle, puis le cadre « Bon pour accord » avec date et signature.
+  assert.equal(normal(await onglet.texte('#feuille .f-conditions .texte-multiligne')), modele);
+  assert.match(normal(await onglet.texte('#feuille .f-accord')).replace(/\n+/g, '\n'), /^Bon pour accord\nDate\nSignature$/i);
+  await verifierDisposition(onglet);
+  await onglet.envoyer('Emulation.setEmulatedMedia', { media: 'print' });
+  try { await verifierDisposition(onglet); } finally { await onglet.envoyer('Emulation.setEmulatedMedia', { media: '' }); }
+
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', num(25));
+  assert.deepEqual((await lignesDeLaListe(onglet))[0], [num(25), '(sans client)', AUJOURDHUI, '0,00 €', 'Brouillon']);
+});
+
+test('date du devis et durée de validité se modifient : « Valable jusqu\'au » se recalcule', async () => {
+  const droite = async () => normal(await onglet.texte('#feuille .f-document')).replace(/\n+/g, '\n');
+  await onglet.cliquer('#liste-lignes tr:nth-child(1) .col-client');
+  await onglet.attendreTexte('#devis-numero-barre', num(25));
+
+  await taperDate(onglet, '06102026');
+  assert.equal(await valeur(onglet, '#devis-date'), '2026-10-06');
+  assert.equal(await droite(), `DEVIS\n${num(25)}\nDate : 06/10/2026\nValable jusqu'au 05/11/2026`);
+
+  await onglet.taper('#validite', '15');
+  assert.equal(await droite(), `DEVIS\n${num(25)}\nDate : 06/10/2026\nValable jusqu'au 21/10/2026`);
+  assert.equal(await onglet.texte('#validite-apercu'), 'Valable jusqu\'au 21/10/2026.');
+
+  // Durée refusée : case rouge, plus de date de validité inventée.
+  const rouge = (sel) => onglet.evaluer(`getComputedStyle(document.querySelector('${sel}')).borderTopColor`).then((c) => c === 'rgb(180, 35, 24)');
+  for (const refuse of ['0', '366', 'abc', '1,5']) {
+    await onglet.taper('#validite', refuse);
+    assert.equal(await rouge('#validite'), true, 'validité ' + refuse + ' en rouge');
+    assert.equal(await onglet.texte('#validite-apercu'), 'Un nombre de jours, de 1 à 365.');
+    assert.doesNotMatch(await droite(), /Valable/);
+  }
+
+  // Fin de mois : 31/01/2027 + 30 jours = 02/03/2027.
+  await onglet.taper('#validite', '30');
+  assert.equal(await rouge('#validite'), false);
+  await taperDate(onglet, '31012027');
+  assert.equal(await droite(), `DEVIS\n${num(25)}\nDate : 31/01/2027\nValable jusqu'au 02/03/2027`);
+
+  await taperDate(onglet, '06102026');
+  await onglet.taper('#validite', '15');
+  await onglet.recharger();
+  await onglet.attendreTexte('#devis-numero-barre', num(25));
+  assert.equal(await valeur(onglet, '#devis-date'), '2026-10-06');
+  assert.equal(await valeur(onglet, '#validite'), '15');
+  assert.equal(await droite(), `DEVIS\n${num(25)}\nDate : 06/10/2026\nValable jusqu'au 21/10/2026`);
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', num(25));
+  assert.equal((await lignesDeLaListe(onglet))[0][2], '06/10/2026');
+});
+
+test('conditions ajustées pour ce seul devis : le modèle des réglages ne change pas', async () => {
+  await onglet.cliquer('#liste-lignes tr:nth-child(1) .col-client');
+  await onglet.attendreTexte('#devis-numero-barre', num(25));
+  const ajustees = modele.replace('payable sous 30 jours', 'payable sous 45 jours');
+  assert.notEqual(ajustees, modele);
+  await onglet.taper('#conditions', ajustees);
+  assert.match(normal(await onglet.texte('#feuille .f-conditions')), /payable sous 45 jours/);
+  await onglet.recharger();
+  await onglet.attendreTexte('#devis-numero-barre', num(25));
+  assert.equal(await valeur(onglet, '#conditions'), ajustees);
+  assert.match(normal(await onglet.texte('#feuille .f-conditions')), /payable sous 45 jours/);
+
+  await onglet.cliquer('#retour-liste');
+  await onglet.cliquer('#ouvrir-reglages');
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  assert.equal(await valeur(onglet, reglage('conditions')), modele);
+  await onglet.cliquer('#reglages .retour');
+  await onglet.attendreTexte('#liste-lignes', num(25));
+});
+
+test('réglages changés : aucun devis existant ne bouge, le devis créé ensuite prend les nouvelles valeurs', async () => {
+  const ouvrir = async (n) => {
+    await onglet.cliquer(`#liste-lignes a[href="#${num(n)}"]`);
+    await onglet.attendreTexte('#devis-numero-barre', num(n));
+  };
+  const etat = async () => ({
+    feuille: await onglet.texte('#feuille'),
+    date: await valeur(onglet, '#devis-date'),
+    validite: await valeur(onglet, '#validite'),
+    tva: await onglet.evaluer(`document.querySelector('#tva-choix input:checked').value`),
+    acompte: await valeur(onglet, '#acompte'),
+    conditions: await valeur(onglet, '#conditions'),
+  });
+  await ouvrir(25);
+  const avant25 = await etat();
+  await onglet.cliquer('#retour-liste');
+  await ouvrir(24);
+  const avant24 = await etat();
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', num(25));
+  const listeAvant = await lignesDeLaListe(onglet);
+
+  await onglet.cliquer('#ouvrir-reglages');
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  await onglet.taper(reglage('nom'), 'Marie Martin Conseil EI');
+  await onglet.taper(reglage('conditions'), 'Paiement à réception de facture.');
+  await onglet.cliquer('#reglage-tva input[value="10"] + span');
+  const rouge = (sel) => onglet.evaluer(`getComputedStyle(document.querySelector('${sel}')).borderTopColor`).then((c) => c === 'rgb(180, 35, 24)');
+  await onglet.taper(reglage('acompte'), '150');
+  assert.equal(await rouge(reglage('acompte')), true);
+  await onglet.taper(reglage('acompte'), '40');
+  assert.equal(await rouge(reglage('acompte')), false);
+  await onglet.taper(reglage('validite'), '400');
+  assert.equal(await rouge(reglage('validite')), true);
+  await onglet.taper(reglage('validite'), '45');
+  assert.equal(await rouge(reglage('validite')), false);
+  await onglet.recharger();
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  assert.equal(await onglet.evaluer(`document.querySelector('#reglage-tva input:checked').value`), '10');
+  assert.equal(await valeur(onglet, reglage('acompte')), '40');
+  assert.equal(await valeur(onglet, reglage('validite')), '45');
+  await onglet.cliquer('#reglages .retour');
+  await onglet.attendreTexte('#liste-lignes', num(25));
+
+  // Devis existants, brouillons compris : rien n'a bougé.
+  assert.deepEqual(await lignesDeLaListe(onglet), listeAvant);
+  await ouvrir(25);
+  assert.deepEqual(await etat(), avant25);
+  await onglet.cliquer('#retour-liste');
+  await ouvrir(24);
+  assert.deepEqual(await etat(), avant24);
+  await onglet.cliquer('#retour-liste');
+
+  // Le devis créé ensuite prend les réglages du jour.
+  await onglet.cliquer('#nouveau-devis');
+  await onglet.attendreTexte('#devis-numero-barre', num(26));
+  assert.equal(await onglet.evaluer(`document.querySelector('#tva-choix input:checked').value`), '10');
+  assert.equal(await valeur(onglet, '#acompte'), '40');
+  assert.equal(await valeur(onglet, '#validite'), '45');
+  assert.equal(await valeur(onglet, '#remise'), '0');
+  assert.equal(await valeur(onglet, '#devis-date'), jourPlus(0)[1]);
+  assert.equal(await valeur(onglet, '#conditions'), 'Paiement à réception de facture.');
+  assert.match(normal(await onglet.texte('#feuille .f-emetteur')), /^Marie Martin Conseil EI\n/);
+  assert.match(normal(await onglet.texte('#feuille .f-document')), new RegExp(`Valable jusqu'au ${jourPlus(45)[0]}`));
+  assert.deepEqual((await totauxAffiches(onglet)).map((l) => l[0]), ['Total HT', 'TVA 10 %', 'Total TTC', 'Acompte à la commande (40 %)', 'Reste à payer']);
+  assert.equal(normal(await onglet.texte('#feuille .f-conditions .texte-multiligne')), 'Paiement à réception de facture.');
   assert.deepEqual(onglet.erreurs, []);
 });

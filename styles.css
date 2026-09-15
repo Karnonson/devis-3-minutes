@@ -150,6 +150,8 @@ a.bouton { display: inline-block; text-decoration: none; }
 .aide.erreur { color: var(--rouge); }
 .champs-cote { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .champ-court { max-width: 160px; }
+.reglages-aide-bloc { margin: -4px 0 10px; }
+#validite-apercu { margin: -4px 0 12px; }
 .champ input.invalide, .champ input.invalide:focus { border-color: var(--rouge); }
 .champ input.invalide:focus { box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12); }
 
@@ -314,6 +316,24 @@ a.bouton { display: inline-block; text-decoration: none; }
 .f-acompte th, .f-acompte td { padding-top: 12px; }
 .f-reste th, .f-reste td { font-weight: 600; }
 .f-mention-tva { margin: 3mm 0 0 auto !important; text-align: right; font-size: 8.5pt; color: var(--nuit-doux); }
+
+.f-date { color: var(--nuit-doux); font-variant-numeric: tabular-nums; }
+.f-numero + .f-date { margin-top: 6px !important; }
+
+.f-conditions { margin-top: 12mm; font-size: 8.5pt; color: var(--nuit-doux); }
+.f-conditions .f-etiquette { margin-bottom: 4px !important; }
+
+.f-accord {
+  margin: 8mm 0 0 auto;
+  width: 45%;
+  border: 1px solid var(--nuit-pale);
+  border-radius: 4px;
+  padding: 3mm 4mm;
+  break-inside: avoid;
+}
+.f-accord-titre { font-weight: 600; margin-bottom: 2mm !important; }
+.f-accord-cases { display: grid; grid-template-columns: 1fr 1.6fr; gap: 4mm; }
+.f-accord-case { min-height: 22mm; border-top: 1px solid var(--trait); padding-top: 1.5mm; }
 
 /* ---- Impression : seule la feuille sort, identique à l'aperçu ---- */
 
