@@ -692,12 +692,16 @@ const manquesAffiches = (o) => o.evaluer(`(() => { const p = document.querySelec
   return p.offsetParent === null ? [] : [...p.querySelectorAll('li')].map((li) => li.innerText.trim()); })()`);
 // Impressions demandées à Chrome, relevées par le témoin posé sur window.print : titre de la page à ce moment.
 const impressions = (o) => o.evaluer('window.__impressions || []');
+// Ouvertures de l'impression par Chrome (événement beforeprint) : titre de la page à ce moment.
+const ouvertures = (o) => o.evaluer('window.__ouvertures || []');
 
 async function poserTemoinImpression(o) {
   await o.envoyer('Page.addScriptToEvaluateOnNewDocument', { source: `(() => {
     window.__impressions = [];
+    window.__ouvertures = [];
     const imprimer = window.print.bind(window);
     window.print = () => { window.__impressions.push(document.title); return imprimer(); };
+    window.addEventListener('beforeprint', () => window.__ouvertures.push(document.title));
   })()` });
 }
 
@@ -801,5 +805,20 @@ test('« Sortir le PDF » refusé : la page liste les manques et entoure les cas
   await onglet.recharger();
   await onglet.attendreTexte('#liste-lignes', num(26));
   assert.deepEqual((await lignesDeLaListe(onglet))[0], [num(26), 'Studio Lune', AUJOURDHUI, '495,00 €', 'Brouillon']);
+  assert.deepEqual(onglet.erreurs, []);
+});
+
+// ---- Un devis de plusieurs pages, lisible en noir et blanc (tranche 07) ----
+// Le découpage des pages, le pied « <numéro> — page x/y » et le noir et blanc se vérifient dans le PDF : tests/pdf.js.
+
+test('« Sortir le PDF » : à l\'ouverture de l\'impression, le titre de la page est « <numéro> - <client> » du moment', async () => {
+  await onglet.cliquer(`#liste-lignes a[href="#${num(26)}"]`);
+  await onglet.attendreTexte('#devis-numero-barre', num(26));
+  await onglet.taper('#client-nom', 'Atelier Soleil');
+  const avant = (await ouvertures(onglet)).length;
+  await onglet.cliquer('#sortir-pdf');
+  await attendre(async () => (await ouvertures(onglet)).length > avant, 'ouverture de l\'impression');
+  assert.deepEqual((await ouvertures(onglet)).slice(avant), [`${num(26)} - Atelier Soleil`]);
+  assert.equal(await onglet.visible('#manques'), false);
   assert.deepEqual(onglet.erreurs, []);
 });

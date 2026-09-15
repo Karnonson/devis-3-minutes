@@ -338,6 +338,9 @@ a.bouton { display: inline-block; text-decoration: none; }
 .prestation-titre { font-weight: 600; }
 .prestation-detail { font-size: 8.5pt; color: var(--nuit-doux); margin-top: 2px; }
 
+/* Fin du devis (totaux, conditions, « Bon pour accord ») : jamais coupée entre deux pages ; si elle ne tient pas
+   sous le tableau, elle passe entière sur la page suivante. (Un break-before: avoid en plus fait couper Chrome.) */
+.f-fin { break-inside: avoid; }
 .f-totaux { margin: 6mm 0 0 auto; border-collapse: collapse; min-width: 45%; break-inside: avoid; }
 .f-totaux th { text-align: left; font-weight: 400; padding: 4px 24px 4px 0; }
 .f-totaux td { text-align: right; padding: 4px 0; white-space: nowrap; }
@@ -367,12 +370,19 @@ a.bouton { display: inline-block; text-decoration: none; }
 
 /* ---- Impression : seule la feuille sort, identique à l'aperçu ---- */
 
-/* Une marge de page déclarée (même vide) empêche Chrome d'ajouter ses propres en-têtes et pieds de page. */
+/* Une marge de page déclarée (même vide) empêche Chrome d'ajouter ses propres en-têtes et pieds de page.
+   Le pied « <numéro> — page x/y » est écrit par app.js à l'ouverture du devis, dans @bottom-right. */
 @page {
   size: A4;
   margin: 16mm 18mm;
   @top-right { content: ""; }
-  @bottom-right { content: ""; }
+  @bottom-right {
+    content: "";
+    font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+    font-size: 8pt;
+    color: #5a6379;
+    font-variant-numeric: tabular-nums;
+  }
 }
 
 @media print {

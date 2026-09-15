@@ -24,6 +24,15 @@
     Object.keys(ecrans).forEach((k) => { ecrans[k].hidden = k !== nom; });
   }
 
+  // Pied de chaque page imprimée, dans la marge du bas : « DEV-2026-001 — page 1/2 ». Vide hors d'un devis.
+  const piedDePage = document.head.appendChild(document.createElement('style'));
+  function poserPiedDePage(numero) {
+    piedDePage.textContent = numero
+      ? '@page { @bottom-right { content: "' + String(numero).replace(/["\\\n]/g, '') +
+        ' — page " counter(page) "/" counter(pages); } }'
+      : '';
+  }
+
   // ---- Mémoire de la page ----
   // Clés préfixées : les autres projets GitHub Pages du même compte partagent l'origine.
 
@@ -184,6 +193,7 @@
 
   function router() {
     const cible = decodeURIComponent(location.hash.slice(1));
+    poserPiedDePage('');
     if (cible === 'reglages') {
       devis = null;
       afficherReglages();
@@ -311,6 +321,7 @@
     $('validite').value = devis.validite;
     $('conditions').value = devis.conditions;
     $('devis-numero-barre').textContent = devis.numero;
+    poserPiedDePage(devis.numero);
     refusAffiche = false;
     afficherEcran('devis');
     dessinerLignes();
@@ -532,6 +543,8 @@
         '</tr></thead>' +
         '<tbody>' + lignes + '</tbody>' +
       '</table>' +
+      // Totaux, conditions et « Bon pour accord » restent ensemble sur la même page.
+      '<div class="f-fin">' +
       '<table class="f-totaux">' + totaux.join('') + '</table>' +
       (franchise ? '<p class="f-mention-tva">TVA non applicable, art. 293 B du CGI</p>' : '') +
       // Conditions vides : ni titre ni cadre vide.
@@ -545,7 +558,8 @@
           '<div class="f-accord-case"><p class="f-etiquette">Date</p></div>' +
           '<div class="f-accord-case f-accord-signature"><p class="f-etiquette">Signature</p></div>' +
         '</div>' +
-      '</section>';
+      '</section>' +
+      '</div>';
 
     marquerManques();
   }
