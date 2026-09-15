@@ -1,5 +1,5 @@
-// Devis 3 minutes — tranche 01 : taper un devis et sortir son PDF.
-// Rien n'est encore gardé : un rechargement repart de zéro.
+// Devis 3 minutes — la page : liste des devis, écran du devis avec aperçu A4, PDF par l'impression.
+// Tout est gardé dans la mémoire de Chrome (localStorage), à chaque frappe.
 (function () {
   'use strict';
 
@@ -7,7 +7,7 @@
   const TAUX_TVA = 20;
 
   const $ = (id) => document.getElementById(id);
-  const ecrans = { accueil: $('accueil'), devis: $('devis') };
+  const ecrans = { liste: $('liste'), reglages: $('reglages'), devis: $('devis') };
   const listeLignes = $('lignes');
   const modeleLigne = $('modele-ligne');
   const feuille = $('feuille');
@@ -18,26 +18,161 @@
     Object.keys(ecrans).forEach((k) => { ecrans[k].hidden = k !== nom; });
   }
 
+  // ---- Mémoire de la page ----
+  // Clés préfixées : les autres projets GitHub Pages du même compte partagent l'origine.
+
+  const CLE_DEVIS = 'devis-3-minutes:devis';
+  const CLE_COMPTEUR = 'devis-3-minutes:compteur';
+
+  function lire(cle, defaut) {
+    try {
+      const v = localStorage.getItem(cle);
+      return v === null ? defaut : JSON.parse(v);
+    } catch (e) {
+      return defaut;
+    }
+  }
+
+  function ecrire(cle, valeur) {
+    try { localStorage.setItem(cle, JSON.stringify(valeur)); } catch (e) { /* mémoire indisponible */ }
+  }
+
+  function tousLesDevis() {
+    const liste = lire(CLE_DEVIS, []);
+    return Array.isArray(liste) ? liste : [];
+  }
+
+  // Relit la liste avant d'écrire : un autre onglet a pu créer ou modifier un autre devis.
+  // Pour un même devis, la dernière saisie l'emporte.
+  function enregistrer() {
+    const liste = tousLesDevis();
+    const i = liste.findIndex((d) => d.numero === devis.numero);
+    if (i === -1) liste.push(devis); else liste[i] = devis;
+    ecrire(CLE_DEVIS, liste);
+  }
+
+  const deuxChiffres = (n) => String(n).padStart(2, '0');
+
+  // Numéro suivant de l'année en cours ; le compteur repart à 001 avec une nouvelle année.
+  function prochainNumero(liste) {
+    const annee = new Date().getFullYear();
+    const c = lire(CLE_COMPTEUR, null);
+    let n = c && c.annee === annee && c.prochain >= 1 ? c.prochain : 1;
+    const pris = new Set(liste.map((d) => d.numero));
+    const numero = () => 'DEV-' + annee + '-' + String(n).padStart(3, '0');
+    while (pris.has(numero())) n++;
+    const resultat = numero();
+    ecrire(CLE_COMPTEUR, { annee: annee, prochain: n + 1 });
+    return resultat;
+  }
+
+  // ---- Écrans et adresse : #DEV-2026-001, #reglages, sinon la liste ----
+
+  function router() {
+    const cible = decodeURIComponent(location.hash.slice(1));
+    if (cible === 'reglages') {
+      afficherEcran('reglages');
+    } else if (cible && ouvrirDevis(cible)) {
+      afficherEcran('devis');
+      ajusterApercu();
+    } else {
+      devis = null;
+      dessinerListe();
+      afficherEcran('liste');
+    }
+  }
+  window.addEventListener('hashchange', router);
+
+  // Liste modifiée dans un autre onglet : la liste affichée suit.
+  window.addEventListener('storage', (e) => {
+    if (e.key === CLE_DEVIS && !ecrans.liste.hidden) dessinerListe();
+  });
+
+  // ---- Liste ----
+
+  const STATUTS = { brouillon: 'Brouillon' };
+
+  function dateCourte(iso) {
+    const [a, m, j] = String(iso).split('-');
+    return j + '/' + m + '/' + a;
+  }
+
+  function dessinerListe() {
+    const liste = tousLesDevis().slice().reverse(); // le dernier créé en haut
+    const corps = $('liste-lignes');
+    corps.textContent = '';
+    liste.forEach((d) => {
+      const tr = document.createElement('tr');
+      tr.dataset.numero = d.numero;
+      const nom = d.client && d.client.nom.trim();
+      const cellules = [
+        ['col-numero', null],
+        [nom ? 'col-client' : 'col-client sans-client', nom || '(sans client)'],
+        ['col-date', dateCourte(d.date)],
+        ['col-nombre', Calc.formatEuros(Calc.totaux(d.lignes || [], d.tva).ttc)],
+        ['col-statut', null],
+      ];
+      cellules.forEach(([classe, texte]) => {
+        const td = document.createElement('td');
+        td.className = classe;
+        if (texte !== null) td.textContent = texte;
+        tr.appendChild(td);
+      });
+      const lien = document.createElement('a');
+      lien.href = '#' + d.numero;
+      lien.textContent = d.numero;
+      tr.querySelector('.col-numero').appendChild(lien);
+      const statut = document.createElement('span');
+      statut.className = 'statut statut-' + d.statut;
+      statut.textContent = STATUTS[d.statut] || d.statut;
+      tr.querySelector('.col-statut').appendChild(statut);
+      corps.appendChild(tr);
+    });
+    $('liste-vide').hidden = liste.length > 0;
+    $('liste-devis').hidden = liste.length === 0;
+  }
+
+  $('liste-lignes').addEventListener('click', (e) => {
+    const tr = e.target.closest('tr[data-numero]');
+    if (tr && !e.target.closest('a')) location.hash = tr.dataset.numero;
+  });
+
+  // ---- Création et ouverture ----
+
   function ligneVide() {
     return { titre: '', detail: '', quantite: '', prix: '' };
   }
 
   function nouveauDevis() {
-    const annee = new Date().getFullYear();
-    devis = {
-      numero: 'DEV-' + annee + '-001',
+    const liste = tousLesDevis();
+    const maintenant = new Date();
+    const d = {
+      numero: prochainNumero(liste),
+      cree: maintenant.toISOString(),
+      date: maintenant.getFullYear() + '-' + deuxChiffres(maintenant.getMonth() + 1) + '-' + deuxChiffres(maintenant.getDate()),
+      statut: 'brouillon',
       client: { nom: '', contact: '', adresse: '' },
       lignes: [ligneVide()],
       tva: TAUX_TVA,
     };
-    $('client-nom').value = '';
-    $('client-contact').value = '';
-    $('client-adresse').value = '';
+    liste.push(d);
+    ecrire(CLE_DEVIS, liste);
+    location.hash = d.numero;
+  }
+
+  // Ouvre le devis tel qu'il est dans la mémoire ; false s'il n'existe pas.
+  function ouvrirDevis(numero) {
+    const trouve = tousLesDevis().find((d) => d.numero === numero);
+    if (!trouve) return false;
+    devis = trouve;
+    $('client-nom').value = devis.client.nom;
+    $('client-contact').value = devis.client.contact;
+    $('client-adresse').value = devis.client.adresse;
     $('devis-numero-barre').textContent = devis.numero;
-    dessinerLignes();
     afficherEcran('devis');
-    ajusterApercu();
+    dessinerLignes();
     $('client-nom').focus();
+    return true;
   }
 
   // ---- Saisie ----
@@ -71,6 +206,7 @@
     const li = e.target.closest('.ligne');
     if (!champ || !li) return;
     devis.lignes[Number(li.dataset.rang)][champ] = e.target.value;
+    enregistrer();
     rafraichir();
   });
 
@@ -90,6 +226,7 @@
       const question = titre ? 'Supprimer la ligne « ' + titre + ' » ?' : 'Supprimer la ligne ' + (i + 1) + ' ?';
       if (!window.confirm(question)) return;
       devis.lignes.splice(i, 1);
+      enregistrer();
       dessinerLignes(Math.min(i, devis.lignes.length - 1));
     }
   });
@@ -97,16 +234,19 @@
   function echanger(a, b) {
     const l = devis.lignes;
     const x = l[a]; l[a] = l[b]; l[b] = x;
+    enregistrer();
   }
 
   $('ajouter-ligne').addEventListener('click', () => {
     devis.lignes.push(ligneVide());
+    enregistrer();
     dessinerLignes(devis.lignes.length - 1);
   });
 
   [['client-nom', 'nom'], ['client-contact', 'contact'], ['client-adresse', 'adresse']].forEach(([id, cle]) => {
     $(id).addEventListener('input', (e) => {
       devis.client[cle] = e.target.value;
+      enregistrer();
       rafraichir();
     });
   });
@@ -197,5 +337,6 @@
   window.addEventListener('afterprint', ajusterApercu);
 
   $('nouveau-devis').addEventListener('click', nouveauDevis);
-  afficherEcran('accueil');
+  $('nouveau-devis-vide').addEventListener('click', nouveauDevis);
+  router();
 })();

@@ -42,17 +42,31 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 **À construire :** la page s'ouvre sur la liste des devis. « Nouveau devis » donne le numéro suivant, tout s'enregistre à chaque frappe, un bouton ramène à la liste, un clic sur une ligne rouvre le devis, et tout est encore là après avoir fermé et rouvert Chrome. Le bouton « Réglages » est présent mais n'affiche encore qu'un écran « bientôt ». Le contrôle automatique de la page (Décisions de test, point 2) démarre ici et s'allonge à chaque tranche suivante.
 **Bloqué par :** 01.
 **Fait quand :**
-- [ ] La liste est la page d'accueil, avec « Réglages » et « Nouveau devis » en haut. *(story 11)*
-- [ ] Chaque ligne de la liste montre numéro, client, date, total TTC et statut, le dernier créé en haut. *(story 12)*
-- [ ] Liste vide : « Aucun devis » et le bouton « Nouveau devis ». *(story 13)*
-- [ ] Un devis sans nom de client apparaît comme « (sans client) » dans la liste. *(story 14)*
-- [ ] Un clic sur une ligne de la liste rouvre le devis, modifiable. *(story 15)*
-- [ ] Trois clics sur « Nouveau devis » donnent DEV-2026-001, DEV-2026-002, DEV-2026-003. *(story 19)*
-- [ ] Avec l'horloge de l'ordinateur passée en 2027, le devis suivant reçoit DEV-2027-001. *(story 22)*
-- [ ] Sans bouton « Enregistrer », un devis tapé puis Chrome fermé et rouvert revient intact. *(story 42)*
-- [ ] Depuis l'écran du devis, un bouton ramène à la liste. *(story 44)*
-- [ ] Page ouverte dans deux onglets : c'est la dernière saisie qui reste, sans message. *(story 62)*
-- [ ] Le contrôle automatique de la page, lancé depuis Node.js dans Chrome sans fenêtre et parti d'une mémoire vide, rejoue : nouveau devis, saisie, retour à la liste, rechargement, et vérifie ce qui reste affiché.
+- [x] La liste est la page d'accueil, avec « Réglages » et « Nouveau devis » en haut. *(story 11)*
+- [x] Chaque ligne de la liste montre numéro, client, date, total TTC et statut, le dernier créé en haut. *(story 12)*
+- [x] Liste vide : « Aucun devis » et le bouton « Nouveau devis ». *(story 13)*
+- [x] Un devis sans nom de client apparaît comme « (sans client) » dans la liste. *(story 14)*
+- [x] Un clic sur une ligne de la liste rouvre le devis, modifiable. *(story 15)*
+- [x] Trois clics sur « Nouveau devis » donnent DEV-2026-001, DEV-2026-002, DEV-2026-003. *(story 19)*
+- [x] Avec l'horloge de l'ordinateur passée en 2027, le devis suivant reçoit DEV-2027-001. *(story 22)*
+- [x] Sans bouton « Enregistrer », un devis tapé puis Chrome fermé et rouvert revient intact. *(story 42)*
+- [x] Depuis l'écran du devis, un bouton ramène à la liste. *(story 44)*
+- [x] Page ouverte dans deux onglets : c'est la dernière saisie qui reste, sans message. *(story 62)*
+- [x] Le contrôle automatique de la page, lancé depuis Node.js dans Chrome sans fenêtre et parti d'une mémoire vide, rejoue : nouveau devis, saisie, retour à la liste, rechargement, et vérifie ce qui reste affiché.
+
+**Choisi :**
+- La mémoire tient en deux clés, `devis-3-minutes:devis` (la liste) et `devis-3-minutes:compteur` (année et prochain numéro). Chaque frappe relit la liste avant d'y réécrire le devis ouvert : un devis créé dans un autre onglet n'est jamais écrasé, et pour un même devis la dernière saisie l'emporte.
+- Le numéro est pris au clic sur « Nouveau devis » ; le compteur repart à 001 dès que l'année de l'horloge diffère de celle du compteur, et saute un numéro déjà présent dans la liste (jamais deux devis au même numéro).
+- L'écran ouvert est dans l'adresse (`#DEV-2026-001`, `#reglages`) : un rechargement rouvre le même écran et le bouton Précédent de Chrome ramène à la liste. Une adresse sans devis connu ouvre la liste.
+- Le bouton de retour est un lien « ← Liste des devis » en haut à gauche de l'écran du devis ; l'écran « bientôt » des réglages a le même.
+- La date de la liste s'affiche « 15/09/2026 » ; le statut est une pastille grise « Brouillon ».
+- La liste vide montre « Aucun devis » avec un second bouton « Nouveau devis » au milieu, en plus de celui de la barre.
+- Toute la ligne de la liste est cliquable ; le numéro est aussi un lien, pour le clavier.
+- Le contrôle automatique de la page est `tests/page.js`, lancé à part (`node --test tests/page.js`, environ 15 s) pour que `node --test` reste les seuls tests de calcul. Il pilote Chrome par son protocole de débogage avec le WebSocket de Node (`tests/chrome.js`), clics et frappes réels, profil neuf à chaque passage, et lance lui-même `python3 -m http.server 8000` si rien ne répond sur ce port. Il rejoue aussi les trois numéros, « (sans client) », Chrome fermé puis relancé sur le même profil, deux onglets, et 2027.
+- L'horloge « passée en 2027 » est celle de Chrome, avancée depuis l'extérieur par le contrôle (`Emulation.setVirtualTimePolicy`) plutôt que celle du système, qui demanderait les droits d'administration.
+
+**Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js`.
+**Fichiers :** `index.html`, `styles.css`, `app.js`, `tests/page.js`, `tests/chrome.js`, `builds/01-devis-3-minutes/captures/02-liste-vide.png`, `02-liste.png`, `02-devis-rouvert.png`, `02-reglages.png`.
 
 ## 03 — Réglages et première ouverture
 

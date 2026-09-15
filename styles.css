@@ -56,6 +56,7 @@ button, input, textarea { font: inherit; color: inherit; }
   justify-content: space-between;
   gap: 16px;
   padding: 14px 24px;
+  min-height: 67px;
   border-bottom: 1px solid var(--trait);
   background: var(--blanc);
 }
@@ -75,10 +76,58 @@ button, input, textarea { font: inherit; color: inherit; }
 .bouton.principal:hover { background: var(--sapin-fonce); }
 .bouton.secondaire { background: var(--blanc); color: var(--sapin); border-color: var(--trait); }
 .bouton.secondaire:hover { border-color: var(--sapin); }
+a.bouton { display: inline-block; text-decoration: none; }
 .bouton:focus-visible, .icone:focus-visible { outline: 2px solid var(--sapin); outline-offset: 2px; }
 
-.accueil-corps { padding: 48px 24px; }
 .discret { color: var(--nuit-doux); margin: 0; }
+
+.barre-gauche { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.retour { color: var(--nuit-doux); text-decoration: none; font-weight: 600; white-space: nowrap; }
+.retour:hover { color: var(--sapin); }
+.retour:focus-visible, .liste-devis a:focus-visible { outline: 2px solid var(--sapin); outline-offset: 2px; border-radius: 2px; }
+
+/* ---- Liste des devis et réglages ---- */
+
+.page-corps { width: 100%; max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+.titre-ecran { margin: 0 0 20px; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+
+.liste-vide {
+  border: 1px dashed var(--trait);
+  border-radius: 8px;
+  padding: 48px 24px;
+  text-align: center;
+}
+.liste-vide-titre { margin: 0 0 16px; font-weight: 600; color: var(--nuit-doux); }
+
+.liste-devis { width: 100%; border-collapse: collapse; }
+.liste-devis th {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--nuit-doux);
+  text-align: left;
+  padding: 0 12px 8px;
+  border-bottom: 1px solid var(--trait);
+}
+.liste-devis td { padding: 12px; border-bottom: 1px solid var(--trait); white-space: nowrap; }
+.liste-devis tbody tr { cursor: pointer; }
+.liste-devis tbody tr:hover { background: var(--fond-saisie); }
+.liste-devis .col-nombre { text-align: right; font-variant-numeric: tabular-nums; }
+.liste-devis .col-numero a { color: var(--nuit); font-weight: 600; text-decoration: none; font-variant-numeric: tabular-nums; }
+.liste-devis .col-client { width: 100%; white-space: normal; }
+.liste-devis .col-date { color: var(--nuit-doux); font-variant-numeric: tabular-nums; }
+.sans-client { color: var(--nuit-pale); font-style: italic; }
+
+.statut {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #eef0f4;
+  color: var(--nuit-doux);
+}
 
 /* ---- Écran du devis ---- */
 
@@ -225,7 +274,7 @@ button, input, textarea { font: inherit; color: inherit; }
 
 @media print {
   body { background: var(--blanc); }
-  .barre, .saisie, #accueil { display: none !important; }
+  .barre, .saisie, #liste, #reglages { display: none !important; }
   #devis, .ecran, .devis-corps, .apercu { display: block; height: auto; padding: 0; overflow: visible; background: none; min-height: 0; }
   .feuille { width: auto; min-height: 0; padding: 0; margin: 0; box-shadow: none; zoom: 1 !important; }
 }

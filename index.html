@@ -7,23 +7,57 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <!-- Accueil -->
-  <section id="accueil" class="ecran">
+  <!-- Liste des devis (page d'accueil) -->
+  <section id="liste" class="ecran">
     <header class="barre">
       <span class="marque">Devis 3 minutes</span>
       <div class="actions">
+        <a class="bouton secondaire" id="ouvrir-reglages" href="#reglages">Réglages</a>
         <button type="button" class="bouton principal" id="nouveau-devis">Nouveau devis</button>
       </div>
     </header>
-    <main class="accueil-corps">
-      <p class="discret">Cliquez sur « Nouveau devis » pour commencer.</p>
+    <main class="page-corps">
+      <h1 class="titre-ecran">Devis</h1>
+      <div class="liste-vide" id="liste-vide" hidden>
+        <p class="liste-vide-titre">Aucun devis</p>
+        <button type="button" class="bouton principal" id="nouveau-devis-vide">Nouveau devis</button>
+      </div>
+      <table class="liste-devis" id="liste-devis" hidden>
+        <thead>
+          <tr>
+            <th>Numéro</th>
+            <th>Client</th>
+            <th>Date</th>
+            <th class="col-nombre">Total TTC</th>
+            <th>Statut</th>
+          </tr>
+        </thead>
+        <tbody id="liste-lignes"></tbody>
+      </table>
+    </main>
+  </section>
+
+  <!-- Réglages (tranche 03) -->
+  <section id="reglages" class="ecran" hidden>
+    <header class="barre">
+      <div class="barre-gauche">
+        <a class="retour" href="#">← Liste des devis</a>
+        <span class="marque">Réglages</span>
+      </div>
+    </header>
+    <main class="page-corps">
+      <h1 class="titre-ecran">Réglages</h1>
+      <p class="discret">Bientôt : vos coordonnées, votre SIRET et vos conditions se régleront ici.</p>
     </main>
   </section>
 
   <!-- Écran du devis -->
   <section id="devis" class="ecran" hidden>
     <header class="barre">
-      <span class="marque" id="devis-numero-barre"></span>
+      <div class="barre-gauche">
+        <a class="retour" id="retour-liste" href="#">← Liste des devis</a>
+        <span class="marque" id="devis-numero-barre"></span>
+      </div>
       <div class="actions">
         <button type="button" class="bouton principal" id="sortir-pdf">Sortir le PDF</button>
       </div>
