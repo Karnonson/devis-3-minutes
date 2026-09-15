@@ -81,12 +81,12 @@ Pendant la construction, tout se lance et s'essaie sur l'ordinateur, sans compte
 ## À faire à la main
 
 - [x] Imprimer la fiche de contrôle en 5 points (decisions.md, Q25), la poser à côté du clavier et la cocher pour chaque devis Word envoyé jusqu'à la mise en service. *avant la construction* *confirmé par la personne*
-- [ ] Noter le numéro du dernier devis Word envoyé, pour régler « prochain numéro ». *avant la livraison*
-- [ ] Rassembler ses coordonnées exactes : nom, adresse, SIRET, e-mail, téléphone et numéro de TVA intracommunautaire s'il en a un. *avant la livraison*
-- [ ] Créer le compte GitHub sur github.com (plan Free, sans carte), confirmer l'adresse e-mail et choisir un nom de compte définitif, qui fera partie de l'adresse de la page. *avant la livraison*
-- [ ] Connecter l'ordinateur à ce compte : taper `! gh auth login` dans Claude Code, puis choisir GitHub.com, HTTPS et la connexion par le navigateur. *avant la livraison*
-- [ ] Dans Chrome, vérifier que les données des sites ne sont pas effacées à la fermeture : Paramètres → Confidentialité et sécurité → Paramètres des sites → Paramètres de contenu supplémentaires → Données des sites sur l'appareil → « Autoriser les sites à enregistrer des données sur votre appareil ». Vérifier aussi qu'aucune extension de nettoyage n'efface les données des sites. *avant la livraison*
-- [ ] Choisir le profil Chrome où il fera toujours ses devis, celui qui recevra le favori. *avant la livraison*
+- [x] Noter le numéro du dernier devis Word envoyé, pour régler « prochain numéro ». *avant la livraison* *confirmé par la personne*
+- [x] Rassembler ses coordonnées exactes : nom, adresse, SIRET, e-mail, téléphone et numéro de TVA intracommunautaire s'il en a un. *avant la livraison* *confirmé par la personne*
+- [x] Créer le compte GitHub sur github.com (plan Free, sans carte), confirmer l'adresse e-mail et choisir un nom de compte définitif, qui fera partie de l'adresse de la page. *avant la livraison* — vérifié : compte Karnonson, confirmé définitif par la personne
+- [x] Connecter l'ordinateur à ce compte : taper `! gh auth login` dans Claude Code, puis choisir GitHub.com, HTTPS et la connexion par le navigateur. *avant la livraison* — vérifié : GitHub CLI connecté à Karnonson
+- [x] Dans Chrome, vérifier que les données des sites ne sont pas effacées à la fermeture : Paramètres → Confidentialité et sécurité → Paramètres des sites → Paramètres de contenu supplémentaires → Données des sites sur l'appareil → « Autoriser les sites à enregistrer des données sur votre appareil ». Vérifier aussi qu'aucune extension de nettoyage n'efface les données des sites. *avant la livraison* *confirmé par la personne*
+- [x] Choisir le profil Chrome où il fera toujours ses devis, celui qui recevra le favori. *avant la livraison* *confirmé par la personne*
 
 ## Écarté
 
