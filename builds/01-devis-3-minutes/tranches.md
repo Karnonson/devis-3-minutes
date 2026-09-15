@@ -7,20 +7,34 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 **À construire :** le consultant ouvre la page, clique « Nouveau devis », tape un client et ses lignes à gauche (en ajouter, les remettre dans l'ordre, en supprimer une), voit à droite l'aperçu A4 se remplir à chaque frappe avec le total de chaque ligne, le total HT, une TVA fixe à 20 % et le total TTC, puis clique « Sortir le PDF » : la fenêtre d'impression de Chrome s'ouvre avec le bon nom de fichier. Rien n'est encore gardé : un rechargement repart de zéro, et le numéro affiché est toujours le premier de l'année.
 **Bloqué par :** rien, peut démarrer.
 **Fait quand :**
-- [ ] L'écran et l'aperçu ont l'allure de **Apparence** dans `spec.md` : net, calme, pro ; fond blanc, texte bleu nuit, un seul accent vert sapin pour les boutons et le total TTC ; police sans empattement sobre ; aucune image ni logo ; esprit facture Stripe.
-- [ ] Un nouveau devis s'ouvre avec une ligne vide prête à remplir, sans cliquer d'abord. *(story 21)*
-- [ ] La saisie est à gauche, l'aperçu A4 à droite, et l'aperçu change à chaque frappe. *(story 23)*
-- [ ] Le bloc client se remplit avec nom, contact et adresse, le contact pouvant rester vide. *(story 24)*
-- [ ] Chaque ligne a un titre court, affiché en gras, et un détail facultatif sur quelques lignes, affiché plus petit dessous. *(story 25)*
-- [ ] En tapant 2 et 450, le total de la ligne affiche 900,00 € sans rien calculer. *(story 26)*
-- [ ] « Ajouter une ligne » permet de composer un devis de 6 lignes. *(story 29)*
-- [ ] Les flèches haut et bas déplacent une ligne, et l'aperçu suit l'ordre. *(story 30)*
-- [ ] Supprimer une ligne demande une confirmation ; refuser la confirmation garde la ligne. *(story 31)*
-- [ ] Tous les montants s'affichent au format « 1 800,00 € ». *(story 39)*
-- [ ] « Sortir le PDF » ouvre la fenêtre d'impression de Chrome, qui propose « DEV-2026-001 - Acme SARL.pdf », et on choisit soi-même le dossier. *(story 58)*
-- [ ] Le PDF enregistré est un A4 sobre et net, sans image ni logo, identique à l'aperçu. *(story 64)*
-- [ ] Sur l'aperçu et le PDF, les coordonnées du client sont sous l'en-tête, à droite. *(story 66)*
-- [ ] Le tableau a les colonnes Prestation, Qté, PU HT, Total HT, avec le titre en gras et le détail dessous. *(story 67)*
+- [x] L'écran et l'aperçu ont l'allure de **Apparence** dans `spec.md` : net, calme, pro ; fond blanc, texte bleu nuit, un seul accent vert sapin pour les boutons et le total TTC ; police sans empattement sobre ; aucune image ni logo ; esprit facture Stripe.
+- [x] Un nouveau devis s'ouvre avec une ligne vide prête à remplir, sans cliquer d'abord. *(story 21)*
+- [x] La saisie est à gauche, l'aperçu A4 à droite, et l'aperçu change à chaque frappe. *(story 23)*
+- [x] Le bloc client se remplit avec nom, contact et adresse, le contact pouvant rester vide. *(story 24)*
+- [x] Chaque ligne a un titre court, affiché en gras, et un détail facultatif sur quelques lignes, affiché plus petit dessous. *(story 25)*
+- [x] En tapant 2 et 450, le total de la ligne affiche 900,00 € sans rien calculer. *(story 26)*
+- [x] « Ajouter une ligne » permet de composer un devis de 6 lignes. *(story 29)*
+- [x] Les flèches haut et bas déplacent une ligne, et l'aperçu suit l'ordre. *(story 30)*
+- [x] Supprimer une ligne demande une confirmation ; refuser la confirmation garde la ligne. *(story 31)*
+- [x] Tous les montants s'affichent au format « 1 800,00 € ». *(story 39)*
+- [x] « Sortir le PDF » ouvre la fenêtre d'impression de Chrome, qui propose « DEV-2026-001 - Acme SARL.pdf », et on choisit soi-même le dossier. *(story 58)*
+- [x] Le PDF enregistré est un A4 sobre et net, sans image ni logo, identique à l'aperçu. *(story 64)*
+- [x] Sur l'aperçu et le PDF, les coordonnées du client sont sous l'en-tête, à droite. *(story 66)*
+- [x] Le tableau a les colonnes Prestation, Qté, PU HT, Total HT, avec le titre en gras et le détail dessous. *(story 67)*
+
+**Choisi :**
+- Tant que la liste n'existe pas (tranche 02), l'accueil n'est qu'une barre avec « Nouveau devis » et une phrase « Cliquez sur « Nouveau devis » pour commencer. ».
+- La confirmation avant de supprimer une ligne est la boîte de dialogue de Chrome (« Supprimer la ligne « <titre> » ? »), sans fenêtre dessinée dans la page.
+- Deux marges de page CSS vides (`@top-right`, `@bottom-right`) empêchent Chrome d'imprimer sa date, son titre, son adresse et son numéro de page : vérifié dans la vraie fenêtre d'impression. La tranche 07 y mettra « <numéro> — page x/y ».
+- Police Inter en deux graisses (normale et demi-grasse, woff2) copiée dans `fonts/` avec sa licence OFL ; la page pèse 368 Ko en tout.
+- Les montants utilisent des espaces insécables (« 1 800,00 € » ne se coupe jamais) et des chiffres à chasse fixe.
+- Une quantité ou un prix illisible compte pour 0,00 € dans les totaux, en attendant le contrôle de saisie de la tranche 06.
+- Sans nom de client, le titre proposé à l'impression est le numéro seul (la tranche 06 refusera ce cas).
+- Les exemples grisés dans les cases (« Atelier de cadrage »…) n'apparaissent que sur la première ligne.
+- L'aperçu garde la taille A4 réelle et se réduit (zoom) si la colonne de droite est trop étroite ; il revient à 100 % pour l'impression.
+
+**Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`.
+**Fichiers :** `index.html`, `styles.css`, `app.js`, `calc.js`, `tests/calc.test.js`, `fonts/Inter-Regular.woff2`, `fonts/Inter-SemiBold.woff2`, `fonts/LICENSE.txt`, `builds/01-devis-3-minutes/captures/01-accueil.png`, `01-nouveau-devis.png`, `01-six-lignes.png`, `01-fenetre-impression.png`, `01-pdf.png`.
 
 ## 02 — La liste des devis, gardée d'un jour à l'autre
 

@@ -1,0 +1,231 @@
+/* Devis 3 minutes — net, calme, pro. Fond blanc, bleu nuit, un seul accent vert sapin. */
+
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("fonts/Inter-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+}
+
+:root {
+  --blanc: #ffffff;
+  --nuit: #14213d;
+  --nuit-doux: #5a6379;
+  --nuit-pale: #8a92a6;
+  --trait: #e3e7ee;
+  --fond-saisie: #f7f8fa;
+  --sapin: #1d5c3f;
+  --sapin-fonce: #154a32;
+  --rouge: #b42318;
+  --rayon: 6px;
+}
+
+* { box-sizing: border-box; }
+
+html, body { height: 100%; }
+
+body {
+  margin: 0;
+  background: var(--blanc);
+  color: var(--nuit);
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+[hidden] { display: none !important; }
+
+button, input, textarea { font: inherit; color: inherit; }
+
+/* ---- Barre du haut ---- */
+
+.ecran { min-height: 100%; display: flex; flex-direction: column; }
+
+.barre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--trait);
+  background: var(--blanc);
+}
+
+.marque { font-weight: 600; letter-spacing: -0.01em; }
+
+.actions { display: flex; gap: 8px; }
+
+.bouton {
+  border-radius: var(--rayon);
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+.bouton.principal { background: var(--sapin); color: var(--blanc); }
+.bouton.principal:hover { background: var(--sapin-fonce); }
+.bouton.secondaire { background: var(--blanc); color: var(--sapin); border-color: var(--trait); }
+.bouton.secondaire:hover { border-color: var(--sapin); }
+.bouton:focus-visible, .icone:focus-visible { outline: 2px solid var(--sapin); outline-offset: 2px; }
+
+.accueil-corps { padding: 48px 24px; }
+.discret { color: var(--nuit-doux); margin: 0; }
+
+/* ---- Écran du devis ---- */
+
+.devis-corps {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(360px, 460px) 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+}
+
+#devis { height: 100vh; }
+
+.saisie {
+  padding: 20px 24px 48px;
+  border-right: 1px solid var(--trait);
+  background: var(--fond-saisie);
+  overflow-y: auto;
+}
+
+.bloc { border: 0; padding: 0; margin: 0 0 28px; min-width: 0; }
+.bloc legend {
+  padding: 0;
+  margin-bottom: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--nuit-doux);
+}
+
+.champ { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.champ > span { font-size: 12px; font-weight: 600; color: var(--nuit); }
+.champ em { font-style: normal; font-weight: 400; color: var(--nuit-pale); }
+
+.champ input, .champ textarea {
+  width: 100%;
+  padding: 7px 10px;
+  border: 1px solid var(--trait);
+  border-radius: var(--rayon);
+  background: var(--blanc);
+  resize: vertical;
+}
+.champ input::placeholder, .champ textarea::placeholder { color: #b3b9c6; }
+.champ input:focus, .champ textarea:focus { outline: none; border-color: var(--sapin); box-shadow: 0 0 0 3px rgba(29, 92, 63, 0.12); }
+
+.lignes { list-style: none; margin: 0 0 12px; padding: 0; }
+
+.ligne {
+  background: var(--blanc);
+  border: 1px solid var(--trait);
+  border-radius: 8px;
+  padding: 10px 12px 2px;
+  margin-bottom: 10px;
+}
+
+.ligne-tete { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.ligne-rang { font-size: 12px; color: var(--nuit-doux); }
+.ligne-outils { display: flex; gap: 4px; }
+
+.icone {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--trait);
+  border-radius: var(--rayon);
+  background: var(--blanc);
+  color: var(--nuit-doux);
+  cursor: pointer;
+  line-height: 1;
+}
+.icone:hover:not(:disabled) { color: var(--nuit); border-color: var(--nuit-pale); }
+.icone.danger:hover { color: var(--rouge); border-color: var(--rouge); }
+.icone:disabled { opacity: 0.35; cursor: default; }
+
+.ligne-chiffres { display: grid; grid-template-columns: 1fr 1.4fr 1.4fr; gap: 8px; }
+.total-ligne output { padding: 7px 0; font-weight: 600; text-align: right; white-space: nowrap; }
+.total-ligne > span { text-align: right; }
+
+/* ---- Aperçu A4 ---- */
+
+.apercu {
+  overflow: auto;
+  padding: 24px;
+  background: #eef0f4;
+}
+
+.feuille {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0 auto;
+  padding: 16mm 18mm;
+  background: var(--blanc);
+  box-shadow: 0 1px 3px rgba(20, 33, 61, 0.12), 0 8px 24px rgba(20, 33, 61, 0.06);
+  font-size: 10pt;
+  line-height: 1.45;
+}
+
+.feuille p { margin: 0; }
+.texte-multiligne { white-space: pre-line; }
+
+.f-entete { display: flex; justify-content: space-between; gap: 24px; min-height: 18mm; }
+.f-document { text-align: right; }
+.f-document h1 { margin: 0 0 2px; font-size: 20pt; font-weight: 600; letter-spacing: 0.02em; }
+.f-numero { color: var(--nuit-doux); }
+
+.f-client { margin: 10mm 0 10mm auto; width: 45%; min-height: 22mm; }
+.f-etiquette { font-size: 8pt; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--nuit-doux); margin-bottom: 2px !important; }
+.client-nom { font-weight: 600; }
+
+.f-tableau { width: 100%; border-collapse: collapse; }
+.f-tableau th {
+  font-size: 8pt;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--nuit-doux);
+  text-align: left;
+  padding: 0 0 6px;
+  border-bottom: 1px solid var(--nuit);
+}
+.f-tableau td { padding: 8px 0; border-bottom: 1px solid var(--trait); vertical-align: top; }
+.f-tableau tr { break-inside: avoid; }
+.f-tableau .col-prestation { padding-right: 12px; }
+.f-tableau .col-nombre, .f-totaux td, .total-ligne output { font-variant-numeric: tabular-nums; }
+.f-tableau .col-nombre { text-align: right; white-space: nowrap; padding-left: 12px; width: 1%; }
+.f-tableau th.col-nombre { text-align: right; }
+.prestation-titre { font-weight: 600; }
+.prestation-detail { font-size: 8.5pt; color: var(--nuit-doux); margin-top: 2px; }
+
+.f-totaux { margin: 6mm 0 0 auto; border-collapse: collapse; min-width: 45%; break-inside: avoid; }
+.f-totaux th { text-align: left; font-weight: 400; padding: 4px 24px 4px 0; }
+.f-totaux td { text-align: right; padding: 4px 0; white-space: nowrap; }
+.f-ttc th, .f-ttc td { font-weight: 600; font-size: 11pt; color: var(--sapin); border-top: 1px solid var(--nuit); padding-top: 8px; }
+
+/* ---- Impression : seule la feuille sort, identique à l'aperçu ---- */
+
+/* Une marge de page déclarée (même vide) empêche Chrome d'ajouter ses propres en-têtes et pieds de page. */
+@page {
+  size: A4;
+  margin: 16mm 18mm;
+  @top-right { content: ""; }
+  @bottom-right { content: ""; }
+}
+
+@media print {
+  body { background: var(--blanc); }
+  .barre, .saisie, #accueil { display: none !important; }
+  #devis, .ecran, .devis-corps, .apercu { display: block; height: auto; padding: 0; overflow: visible; background: none; min-height: 0; }
+  .feuille { width: auto; min-height: 0; padding: 0; margin: 0; box-shadow: none; zoom: 1 !important; }
+}

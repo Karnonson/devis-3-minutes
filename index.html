@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Devis 3 minutes</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Accueil -->
+  <section id="accueil" class="ecran">
+    <header class="barre">
+      <span class="marque">Devis 3 minutes</span>
+      <div class="actions">
+        <button type="button" class="bouton principal" id="nouveau-devis">Nouveau devis</button>
+      </div>
+    </header>
+    <main class="accueil-corps">
+      <p class="discret">Cliquez sur « Nouveau devis » pour commencer.</p>
+    </main>
+  </section>
+
+  <!-- Écran du devis -->
+  <section id="devis" class="ecran" hidden>
+    <header class="barre">
+      <span class="marque" id="devis-numero-barre"></span>
+      <div class="actions">
+        <button type="button" class="bouton principal" id="sortir-pdf">Sortir le PDF</button>
+      </div>
+    </header>
+
+    <div class="devis-corps">
+      <form class="saisie" id="saisie" autocomplete="off" onsubmit="return false">
+        <fieldset class="bloc">
+          <legend>Client</legend>
+          <label class="champ">
+            <span>Nom</span>
+            <input type="text" id="client-nom" placeholder="Acme SARL">
+          </label>
+          <label class="champ">
+            <span>Contact <em>facultatif</em></span>
+            <input type="text" id="client-contact" placeholder="Marie Martin">
+          </label>
+          <label class="champ">
+            <span>Adresse</span>
+            <textarea id="client-adresse" rows="3" placeholder="12 rue des Lilas&#10;69003 Lyon"></textarea>
+          </label>
+        </fieldset>
+
+        <fieldset class="bloc">
+          <legend>Prestations</legend>
+          <ol class="lignes" id="lignes"></ol>
+          <button type="button" class="bouton secondaire" id="ajouter-ligne">Ajouter une ligne</button>
+        </fieldset>
+      </form>
+
+      <div class="apercu" id="apercu-zone">
+        <article class="feuille" id="feuille" aria-label="Aperçu du devis"></article>
+      </div>
+    </div>
+  </section>
+
+  <template id="modele-ligne">
+    <li class="ligne">
+      <div class="ligne-tete">
+        <span class="ligne-rang"></span>
+        <div class="ligne-outils">
+          <button type="button" class="icone" data-action="monter" aria-label="Monter la ligne" title="Monter">↑</button>
+          <button type="button" class="icone" data-action="descendre" aria-label="Descendre la ligne" title="Descendre">↓</button>
+          <button type="button" class="icone danger" data-action="supprimer" aria-label="Supprimer la ligne" title="Supprimer">✕</button>
+        </div>
+      </div>
+      <label class="champ">
+        <span>Titre</span>
+        <input type="text" data-champ="titre" placeholder="Atelier de cadrage">
+      </label>
+      <label class="champ">
+        <span>Détail <em>facultatif</em></span>
+        <textarea data-champ="detail" rows="2" placeholder="Une demi-journée sur place, compte rendu écrit."></textarea>
+      </label>
+      <div class="ligne-chiffres">
+        <label class="champ">
+          <span>Qté</span>
+          <input type="text" inputmode="decimal" data-champ="quantite" placeholder="1">
+        </label>
+        <label class="champ">
+          <span>PU HT (€)</span>
+          <input type="text" inputmode="decimal" data-champ="prix" placeholder="0,00">
+        </label>
+        <div class="champ total-ligne">
+          <span>Total HT</span>
+          <output data-champ="total">0,00&nbsp;€</output>
+        </div>
+      </div>
+    </li>
+  </template>
+
+  <script src="calc.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
