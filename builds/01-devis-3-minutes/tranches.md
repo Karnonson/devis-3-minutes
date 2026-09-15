@@ -232,6 +232,7 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 
 **Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 30 s). Contrôle automatique du PDF : `node --test tests/pdf.js` (environ 45 s, demande `pdftotext`).
 **Fichiers :** `index.html`, `styles.css`, `app.js`, `tests/page.js`, `tests/chrome.js`, `builds/01-devis-3-minutes/a-trancher.md`, `builds/01-devis-3-minutes/captures/08-liste-statuts.png`, `08-devis-statut.png`, `08-apres-suppression.png`, `08-numero-supprime.png`.
+**Audit :** fusionner, `audits/08.md` — les 7 lignes Fait quand tiennent dans la page pilotée (statuts, suppression, numéro jamais redonné, second onglet), les trois contrôles passent.
 
 ## 09 — Dupliquer un devis, lignes « à relire »
 
