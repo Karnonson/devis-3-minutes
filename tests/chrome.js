@@ -177,6 +177,26 @@ class Onglet {
     }
   }
 
+  // Choisit une option d'un menu déroulant comme une personne : clic pour l'ouvrir, flèches jusqu'au libellé, Entrée.
+  async choisir(selecteur, libelle) {
+    const { cible, courant } = await this.evaluer(`(() => { const s = document.querySelector(${JSON.stringify(selecteur)});
+      return { cible: [...s.options].findIndex((o) => o.text === ${JSON.stringify(libelle)}), courant: s.selectedIndex }; })()`);
+    if (cible === -1) throw new Error('Option « ' + libelle + ' » absente de ' + selecteur);
+    const ecart = cible - courant;
+    await this.cliquer(selecteur);
+    await pause(150); // ouverture du menu
+    const fleche = ecart > 0 ? { key: 'ArrowDown', code: 'ArrowDown', windowsVirtualKeyCode: 40 } : { key: 'ArrowUp', code: 'ArrowUp', windowsVirtualKeyCode: 38 };
+    for (let i = 0; i < Math.abs(ecart); i++) {
+      await this.envoyer('Input.dispatchKeyEvent', { type: 'keyDown', ...fleche });
+      await this.envoyer('Input.dispatchKeyEvent', { type: 'keyUp', ...fleche });
+    }
+    const entree = { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 };
+    await this.envoyer('Input.dispatchKeyEvent', { type: 'keyDown', ...entree });
+    await this.envoyer('Input.dispatchKeyEvent', { type: 'keyUp', ...entree });
+    await attendre(() => this.evaluer(`(() => { const s = document.querySelector(${JSON.stringify(selecteur)});
+      return !!s && s.options[s.selectedIndex].text === ${JSON.stringify(libelle)}; })()`), 'option « ' + libelle + ' » choisie dans ' + selecteur);
+  }
+
   // Frappe touche par touche dans la case qui a le curseur (chiffres d'une date : 06102026).
   async touches(texte) {
     for (const c of texte) {

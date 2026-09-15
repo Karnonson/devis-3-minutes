@@ -30,6 +30,7 @@
             <th>Date</th>
             <th class="col-nombre">Total TTC</th>
             <th>Statut</th>
+            <th class="col-actions"><span class="visuellement-cache">Actions</span></th>
           </tr>
         </thead>
         <tbody id="liste-lignes"></tbody>
@@ -136,6 +137,10 @@
       <div class="barre-gauche">
         <a class="retour" id="retour-liste" href="#">← Liste des devis</a>
         <span class="marque" id="devis-numero-barre"></span>
+        <label class="statut-barre">
+          <span>Statut</span>
+          <select id="devis-statut" class="statut"></select>
+        </label>
       </div>
       <div class="actions">
         <button type="button" class="bouton principal" id="sortir-pdf">Sortir le PDF</button>

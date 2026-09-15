@@ -28,3 +28,23 @@
 - Laisser sortir : seuls le client, les lignes, les quantités et les prix bloquent ; une remise ou un acompte refusé compte pour 0 %, une validité refusée n'imprime pas « Valable jusqu'au », une date incomplète garde la dernière date complète.
 **En attendant :** le PDF est refusé et la liste dit quoi corriger. Laisser sortir revient à retirer quatre lignes de la liste des manques dans `app.js` et un passage du contrôle automatique.
 **Réponse :**
+
+## 08 — Où se trouve « Supprimer » un devis
+
+**Question :** d'où voulez-vous pouvoir supprimer un devis ?
+**Choix :**
+- Depuis la liste seulement : un lien discret « Supprimer » en bout de chaque ligne.
+- Depuis l'écran du devis seulement, dans la barre du haut, à côté du statut.
+- Des deux endroits.
+**En attendant :** « Supprimer » est en bout de chaque ligne de la liste, avec la confirmation de Chrome (capture `captures/08-liste-statuts.png`). L'ajouter sur l'écran du devis est un bouton de plus dans la barre, qui reprend la même suppression, et un passage du contrôle automatique.
+**Réponse :**
+
+## 08 — Couleurs des statuts
+
+**Question :** comment voulez-vous distinguer d'un coup d'œil les quatre statuts dans la liste ?
+**Choix :**
+- Sans vert, dans les tons bleu nuit : « Brouillon » gris, « Envoyé » bleu pâle, « Accepté » bleu nuit plein, « Refusé » blanc bordé de gris.
+- Façon Stripe : « Accepté » en vert sapin pâle et « Refusé » en rouge pâle, les deux autres comme ci-dessus.
+- Toutes les pastilles grises, seul le mot change.
+**En attendant :** les pastilles restent dans les tons bleu nuit, pour garder le vert sapin aux boutons et au total TTC comme le dit **Apparence** (capture `captures/08-liste-statuts.png`). Changer les couleurs ne touche que quatre lignes de `styles.css`.
+**Réponse :**

@@ -214,13 +214,24 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 **À construire :** le consultant passe un devis de « Brouillon » à « Envoyé », « Accepté » ou « Refusé » depuis la liste ou l'écran du devis, supprime un devis après confirmation, et rouvre et modifie n'importe quel devis, quel que soit son statut.
 **Bloqué par :** 02.
 **Fait quand :**
-- [ ] Le statut (brouillon, envoyé, accepté, refusé) se change directement dans la liste, et reste après rechargement. *(story 16)*
-- [ ] « Supprimer » sur n'importe quel devis, quel que soit son statut, demande une confirmation puis le retire de la liste. *(story 17)*
-- [ ] Après suppression de DEV-2026-003, le devis suivant reçoit un numéro jamais donné, et le supprimé ne revient pas. *(story 18)*
-- [ ] Le statut se change aussi depuis l'écran du devis. *(story 43)*
-- [ ] Un devis « Envoyé » se rouvre et se modifie sans confirmation, et garde son numéro et son statut. *(story 45)*
-- [ ] Rien dans la liste ni sur le devis n'indique qu'un devis envoyé a été modifié. *(story 46)*
-- [ ] Le contrôle automatique de la page rejoue un changement de statut et une suppression, puis un rechargement.
+- [x] Le statut (brouillon, envoyé, accepté, refusé) se change directement dans la liste, et reste après rechargement. *(story 16)*
+- [x] « Supprimer » sur n'importe quel devis, quel que soit son statut, demande une confirmation puis le retire de la liste. *(story 17)*
+- [x] Après suppression de DEV-2026-003, le devis suivant reçoit un numéro jamais donné, et le supprimé ne revient pas. *(story 18)*
+- [x] Le statut se change aussi depuis l'écran du devis. *(story 43)*
+- [x] Un devis « Envoyé » se rouvre et se modifie sans confirmation, et garde son numéro et son statut. *(story 45)*
+- [x] Rien dans la liste ni sur le devis n'indique qu'un devis envoyé a été modifié. *(story 46)*
+- [x] Le contrôle automatique de la page rejoue un changement de statut et une suppression, puis un rechargement.
+
+**Choisi :**
+- Le statut est un menu déroulant de Chrome en forme de pastille, le même dans la colonne « Statut » de la liste et dans la barre de l'écran du devis (« Statut » à côté du numéro). Changer le statut dans la liste n'ouvre pas le devis. Le statut n'est jamais imprimé : l'aperçu et le PDF ne changent pas.
+- Pastilles sans vert sapin, gardé aux boutons et au TTC : « Brouillon » gris, « Envoyé » bleu pâle, « Accepté » bleu nuit plein, « Refusé » blanc bordé de gris (voir `a-trancher.md`).
+- « Supprimer » est un lien discret en bout de chaque ligne de la liste, rouge au survol, et seulement là (voir `a-trancher.md`). La confirmation est la boîte de dialogue de Chrome : « Supprimer le devis DEV-2026-003 (Acme SARL) ? Ce numéro ne sera plus jamais donné. » ; la refuser garde le devis.
+- Les numéros supprimés sont gardés dans une quatrième clé, `devis-3-minutes:supprimes`, et sautés comme ceux de la liste : même avec « Prochain numéro » réglé plus bas, un numéro supprimé n'est pas redonné, et les réglages l'écrivent (« Prochain devis : DEV-2026-005 (DEV-2026-003 a été supprimé). »). Après des données effacées, cette mémoire part avec le reste, comme le prévoit la story 63.
+- Un devis supprimé dans un onglet ramène à la liste l'autre onglet où il était ouvert, et une frappe arrivée entre-temps ne le recrée pas ; son adresse (`#DEV-2026-003`) ouvre la liste.
+- Le contrôle automatique rejoue les quatre statuts dans la liste puis depuis le devis, avec rechargement ; un devis « Envoyé » modifié sans boîte de dialogue, même pastille ensuite ; une confirmation refusée puis la suppression d'un devis de chaque statut, rechargement après chacune ; 001, 002, 003, 003 supprimé, 004, puis « Prochain numéro » réglé à 3 qui donne 005 ; et la suppression vue d'un second onglet. Le menu se choisit comme une personne : clic, flèches, Entrée (`tests/chrome.js` sait maintenant le faire). La boîte de confirmation de Chrome ne se capture pas sans fenêtre : son texte est relevé par le contrôle.
+
+**Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 30 s). Contrôle automatique du PDF : `node --test tests/pdf.js` (environ 45 s, demande `pdftotext`).
+**Fichiers :** `index.html`, `styles.css`, `app.js`, `tests/page.js`, `tests/chrome.js`, `builds/01-devis-3-minutes/a-trancher.md`, `builds/01-devis-3-minutes/captures/08-liste-statuts.png`, `08-devis-statut.png`, `08-apres-suppression.png`, `08-numero-supprime.png`.
 
 ## 09 — Dupliquer un devis, lignes « à relire »
 

@@ -27,11 +27,13 @@ let onglet = null;
 
 const normal = (t) => (t === null ? t : t.replace(/[\u00a0\u202f]/g, ' '));
 
-// Les lignes de la liste telles qu'affichées : [numéro, client, date, total TTC, statut].
+// Les lignes de la liste telles qu'affichées : [numéro, client, date, total TTC, statut] (statut : l'option affichée
+// par son menu ; le bouton « Supprimer » à part).
 function lignesDeLaListe(o) {
   return o.evaluer(`[...document.querySelectorAll('#liste-lignes tr')]
     .filter((tr) => tr.offsetParent !== null)
-    .map((tr) => [...tr.cells].map((td) => td.innerText.trim()))`)
+    .map((tr) => [...tr.cells].filter((td) => !td.querySelector('.supprimer-devis'))
+      .map((td) => { const s = td.querySelector('select'); return s ? s.options[s.selectedIndex].text : td.innerText.trim(); }))`)
     .then((lignes) => lignes.map((l) => l.map(normal)));
 }
 
@@ -821,4 +823,197 @@ test('« Sortir le PDF » : à l\'ouverture de l\'impression, le titre de la pag
   assert.deepEqual((await ouvertures(onglet)).slice(avant), [`${num(26)} - Atelier Soleil`]);
   assert.equal(await onglet.visible('#manques'), false);
   assert.deepEqual(onglet.erreurs, []);
+});
+
+// ---- Statuts et suppression d'un devis (tranche 08) ----
+
+const ligneListe = (n) => `#liste-lignes tr:has(a[href="#${num(n)}"])`;
+const statutsDeLaListe = async (o) => (await lignesDeLaListe(o)).map((l) => l[0] + ' ' + l[4]);
+const statutDuDevis = (o) => o.evaluer(`(() => { const s = document.querySelector('#devis-statut'); return s.options[s.selectedIndex].text; })()`);
+
+test('statut changé directement dans la liste, sans ouvrir le devis : il reste après rechargement', async () => {
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', num(26));
+  const dialoguesAvant = onglet.dialogues.length;
+  const avant = await lignesDeLaListe(onglet);
+  assert.deepEqual(avant.map((l) => l[0]), [num(26), num(25), num(24), num(23)]);
+  assert.deepEqual(await onglet.evaluer(`[...document.querySelector('${ligneListe(26)} select').options].map((o) => o.text)`),
+    ['Brouillon', 'Envoyé', 'Accepté', 'Refusé']);
+
+  await onglet.choisir(`${ligneListe(26)} select`, 'Envoyé');
+  await onglet.choisir(`${ligneListe(25)} select`, 'Accepté');
+  await onglet.choisir(`${ligneListe(24)} select`, 'Refusé');
+  // Toujours sur la liste : changer le statut n'ouvre pas le devis.
+  assert.equal(await onglet.visible('#liste-devis'), true);
+  assert.equal(await onglet.visible('#devis'), false);
+
+  const attendu = [`${num(26)} Envoyé`, `${num(25)} Accepté`, `${num(24)} Refusé`, `${num(23)} Brouillon`];
+  assert.deepEqual(await statutsDeLaListe(onglet), attendu);
+  // Le reste de chaque ligne n'a pas bougé.
+  assert.deepEqual((await lignesDeLaListe(onglet)).map((l) => l.slice(0, 4)), avant.map((l) => l.slice(0, 4)));
+
+  await onglet.recharger();
+  await onglet.attendreTexte('#liste-lignes', num(26));
+  assert.deepEqual(await statutsDeLaListe(onglet), attendu);
+  assert.equal(onglet.dialogues.length, dialoguesAvant, 'aucune boîte de dialogue');
+  assert.deepEqual(onglet.erreurs, []);
+});
+
+test('statut changé depuis l\'écran du devis : gardé après rechargement et repris par la liste, jamais imprimé', async () => {
+  await onglet.cliquer(`${ligneListe(23)} a`);
+  await onglet.attendreTexte('#devis-numero-barre', num(23));
+  assert.equal(await statutDuDevis(onglet), 'Brouillon');
+
+  await onglet.choisir('#devis-statut', 'Envoyé');
+  assert.doesNotMatch(await onglet.texte('#feuille'), /Brouillon|Envoyé|Accepté|Refusé/);
+  await onglet.recharger();
+  await onglet.attendreTexte('#devis-numero-barre', num(23));
+  assert.equal(await statutDuDevis(onglet), 'Envoyé');
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', num(23));
+  assert.deepEqual((await statutsDeLaListe(onglet))[3], `${num(23)} Envoyé`);
+
+  // Et retour au brouillon, toujours depuis le devis.
+  await onglet.cliquer(`${ligneListe(23)} .col-client`);
+  await onglet.attendreTexte('#devis-numero-barre', num(23));
+  await onglet.choisir('#devis-statut', 'Brouillon');
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', num(23));
+  assert.deepEqual(await statutsDeLaListe(onglet), [`${num(26)} Envoyé`, `${num(25)} Accepté`, `${num(24)} Refusé`, `${num(23)} Brouillon`]);
+  assert.deepEqual(onglet.erreurs, []);
+});
+
+test('devis « Envoyé » rouvert et modifié sans confirmation : numéro et statut gardés, aucun repère de modification', async () => {
+  onglet.dialogues.length = 0;
+  const pastille = () => onglet.evaluer(`(() => { const s = getComputedStyle(document.querySelector('${ligneListe(26)} select'));
+    return [s.backgroundColor, s.color, s.borderTopColor, s.fontWeight].join(' '); })()`);
+  const pastilleAvant = await pastille();
+  const ligneAvant = (await lignesDeLaListe(onglet))[0];
+  assert.deepEqual(ligneAvant, [num(26), 'Atelier Soleil', AUJOURDHUI, '495,00 €', 'Envoyé']);
+
+  await onglet.cliquer(`${ligneListe(26)} .col-client`);
+  await onglet.attendreTexte('#devis-numero-barre', num(26));
+  assert.equal(await statutDuDevis(onglet), 'Envoyé');
+  assert.equal(await onglet.visible('#manques'), false);
+  await onglet.taper('#client-nom', 'Studio Lune');
+  await onglet.taper(ligneSaisie(1, 'quantite'), '1');
+  assert.match(normal(await onglet.texte('#feuille .f-totaux')), /990,00 €/);
+  assert.equal(await statutDuDevis(onglet), 'Envoyé');
+  assert.equal(await onglet.texte('#devis-numero-barre'), num(26));
+  assert.deepEqual(onglet.dialogues, [], 'aucune confirmation');
+
+  await onglet.recharger();
+  await onglet.attendreTexte('#devis-numero-barre', num(26));
+  assert.equal(await valeur(onglet, '#client-nom'), 'Studio Lune');
+  assert.equal(await statutDuDevis(onglet), 'Envoyé');
+  assert.doesNotMatch(await onglet.evaluer('document.querySelector("#devis").innerText'), /modifi|version|v2|révis/i);
+
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', 'Studio Lune');
+  assert.deepEqual((await lignesDeLaListe(onglet))[0], [num(26), 'Studio Lune', AUJOURDHUI, '990,00 €', 'Envoyé']);
+  // Rien dans la liste ne signale la modification : même pastille, aucune mention.
+  assert.equal(await pastille(), pastilleAvant);
+  assert.doesNotMatch(await onglet.evaluer('document.querySelector("#liste").innerText'), /modifi|version|v2|révis/i);
+  assert.deepEqual(onglet.dialogues, []);
+  assert.deepEqual(onglet.erreurs, []);
+});
+
+test('« Supprimer » : confirmation demandée ; refusée, le devis reste ; acceptée, il sort de la liste quel que soit son statut', async () => {
+  onglet.dialogues.length = 0;
+  onglet.reponseDialogue = false;
+  try {
+    await onglet.cliquer(`${ligneListe(26)} .supprimer-devis`);
+    await attendre(() => onglet.dialogues.length === 1, 'confirmation');
+  } finally {
+    onglet.reponseDialogue = true;
+  }
+  assert.match(onglet.dialogues[0], new RegExp(`Supprimer le devis ${num(26)} \\(Studio Lune\\)`));
+  assert.equal(await onglet.visible('#devis'), false, 'le devis ne s\'ouvre pas');
+  assert.equal((await lignesDeLaListe(onglet)).length, 4);
+
+  // Envoyé, accepté, refusé, brouillon : chacun se supprime.
+  const restants = [26, 25, 24, 23];
+  for (const n of [26, 25, 24, 23]) {
+    await onglet.cliquer(`${ligneListe(n)} .supprimer-devis`);
+    restants.shift();
+    await attendre(async () => (await lignesDeLaListe(onglet)).length === restants.length, 'devis ' + num(n) + ' retiré');
+    assert.deepEqual((await lignesDeLaListe(onglet)).map((l) => l[0]), restants.map(num));
+    await onglet.recharger();
+    await onglet.attendreTexte('#liste .titre-ecran', 'Devis');
+    assert.deepEqual((await lignesDeLaListe(onglet)).map((l) => l[0]), restants.map(num), 'toujours retiré après rechargement');
+  }
+  assert.equal(onglet.dialogues.length, 5);
+  assert.match(onglet.dialogues[4], new RegExp(`Supprimer le devis ${num(23)} \\?`));
+  await onglet.attendreTexte('#liste-vide', 'Aucun devis');
+
+  // L'adresse d'un devis supprimé, tapée dans un onglet, ouvre la liste.
+  await onglet.aller('about:blank');
+  await onglet.aller(URL_PAGE + '#' + num(26));
+  await onglet.attendreTexte('#liste-vide', 'Aucun devis');
+  assert.equal(await onglet.visible('#devis'), false);
+  assert.deepEqual(onglet.erreurs, []);
+});
+
+test('après suppression de DEV-2026-003, le devis suivant reçoit un numéro jamais donné et le supprimé ne revient pas', async () => {
+  // Compteur remis à 1 dans les réglages pour rejouer 001, 002, 003.
+  await onglet.cliquer('#ouvrir-reglages');
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  await onglet.taper('#prochain-numero', '1');
+  assert.equal(await onglet.texte('#prochain-apercu'), `Prochain devis : ${num(1)}.`);
+  await onglet.cliquer('#reglages .retour');
+  for (const n of [1, 2, 3]) {
+    await onglet.cliquer('#nouveau-devis');
+    await onglet.attendreTexte('#devis-numero-barre', num(n));
+    await onglet.cliquer('#retour-liste');
+    await onglet.attendreTexte('#liste-lignes', num(n));
+  }
+  await onglet.cliquer(`${ligneListe(3)} .supprimer-devis`);
+  await attendre(async () => (await lignesDeLaListe(onglet)).length === 2, 'DEV-003 retiré');
+
+  await onglet.cliquer('#nouveau-devis');
+  await onglet.attendreTexte('#devis-numero-barre', num(4));
+  await onglet.cliquer('#retour-liste');
+  await onglet.recharger();
+  await onglet.attendreTexte('#liste-lignes', num(4));
+  assert.deepEqual((await lignesDeLaListe(onglet)).map((l) => l[0]), [num(4), num(2), num(1)]);
+
+  // Même avec « Prochain numéro » réglé plus bas, un numéro supprimé n'est pas redonné.
+  await onglet.cliquer('#ouvrir-reglages');
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  await onglet.taper('#prochain-numero', '3');
+  assert.equal(await onglet.texte('#prochain-apercu'), `Prochain devis : ${num(5)} (${num(3)} a été supprimé).`);
+  await onglet.taper('#prochain-numero', '24');
+  assert.equal(await onglet.texte('#prochain-apercu'), `Prochain devis : ${num(27)} (${num(24)} a été supprimé).`);
+  await onglet.taper('#prochain-numero', '2');
+  assert.equal(await onglet.texte('#prochain-apercu'), `Prochain devis : ${num(5)} (${num(2)} existe déjà).`);
+  await onglet.cliquer('#reglages .retour');
+  await onglet.cliquer('#nouveau-devis');
+  await onglet.attendreTexte('#devis-numero-barre', num(5));
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', num(5));
+  assert.deepEqual((await lignesDeLaListe(onglet)).map((l) => l[0]), [num(5), num(4), num(2), num(1)]);
+  assert.deepEqual(onglet.erreurs, []);
+});
+
+test('deux onglets : un devis supprimé dans l\'un ramène l\'autre à la liste et ne revient pas', async () => {
+  const autre = await nav.onglet();
+  try {
+    await autre.aller(URL_PAGE + '#' + num(4));
+    await autre.attendreTexte('#devis-numero-barre', num(4));
+    await autre.taper('#client-nom', 'Brouillon à jeter');
+
+    await onglet.recharger();
+    await onglet.attendreTexte('#liste-lignes', 'Brouillon à jeter');
+    await onglet.cliquer(`${ligneListe(4)} .supprimer-devis`);
+    await attendre(async () => (await lignesDeLaListe(onglet)).length === 3, 'DEV-004 retiré');
+
+    await autre.attendreTexte('#liste-lignes', num(5));
+    assert.equal(await autre.visible('#devis'), false);
+    await onglet.recharger();
+    await onglet.attendreTexte('#liste-lignes', num(5));
+    assert.deepEqual((await lignesDeLaListe(onglet)).map((l) => l[0]), [num(5), num(2), num(1)]);
+    assert.deepEqual(autre.erreurs, []);
+  } finally {
+    await autre.fermer();
+  }
 });

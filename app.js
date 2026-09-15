@@ -39,6 +39,8 @@
   const CLE_DEVIS = 'devis-3-minutes:devis';
   const CLE_COMPTEUR = 'devis-3-minutes:compteur';
   const CLE_REGLAGES = 'devis-3-minutes:reglages';
+  // Numéros des devis supprimés : jamais redonnés, même si « Prochain numéro » est réglé plus bas.
+  const CLE_SUPPRIMES = 'devis-3-minutes:supprimes';
 
   // Demande discrète à Chrome de ne pas effacer ces données de lui-même ; rien ne s'affiche.
   try { navigator.storage.persist().catch(() => {}); } catch (e) { /* non disponible */ }
@@ -62,12 +64,18 @@
   }
 
   // Relit la liste avant d'écrire : un autre onglet a pu créer ou modifier un autre devis.
-  // Pour un même devis, la dernière saisie l'emporte.
+  // Pour un même devis, la dernière saisie l'emporte. Un devis supprimé (dans un autre onglet) ne revient pas.
   function enregistrer() {
     const liste = tousLesDevis();
     const i = liste.findIndex((d) => d.numero === devis.numero);
-    if (i === -1) liste.push(devis); else liste[i] = devis;
+    if (i === -1) return;
+    liste[i] = devis;
     ecrire(CLE_DEVIS, liste);
+  }
+
+  function numerosSupprimes() {
+    const s = lire(CLE_SUPPRIMES, []);
+    return Array.isArray(s) ? s : [];
   }
 
   const deuxChiffres = (n) => String(n).padStart(2, '0');
@@ -75,12 +83,12 @@
   const formaterNumero = (annee, n) => 'DEV-' + annee + '-' + String(n).padStart(3, '0');
 
   // Numéro que recevra le prochain devis, sans le consommer. Le compteur repart à 001 avec une
-  // nouvelle année et saute un numéro encore présent dans la liste.
+  // nouvelle année et saute un numéro encore présent dans la liste ou déjà supprimé.
   function numeroSuivant(liste) {
     const annee = new Date().getFullYear();
     const c = lire(CLE_COMPTEUR, null);
     let n = c && c.annee === annee && c.prochain >= 1 ? c.prochain : 1;
-    const pris = new Set(liste.map((d) => d.numero));
+    const pris = new Set(liste.map((d) => d.numero).concat(numerosSupprimes()));
     while (pris.has(formaterNumero(annee, n))) n++;
     return { annee: annee, n: n };
   }
@@ -182,11 +190,14 @@
       aide.textContent = 'Un nombre entier, à partir de 1.';
       return;
     }
-    // Un numéro encore présent dans la liste est sauté : on montre celui qui sera vraiment donné.
+    // Un numéro encore présent dans la liste ou supprimé est sauté : on montre celui qui sera vraiment donné.
     if (enregistrerNumero) ecrire(CLE_COMPTEUR, { annee: new Date().getFullYear(), prochain: n });
-    const s = numeroSuivant(tousLesDevis());
+    const liste = tousLesDevis();
+    const s = numeroSuivant(liste);
+    const demande = formaterNumero(s.annee, n);
+    const raison = liste.some((d) => d.numero === demande) ? ' existe déjà' : ' a été supprimé';
     aide.textContent = 'Prochain devis : ' + formaterNumero(s.annee, s.n) +
-      (s.n !== n ? ' (' + formaterNumero(s.annee, n) + ' existe déjà).' : '.');
+      (s.n !== n ? ' (' + demande + raison + ').' : '.');
   }
 
   // ---- Écrans et adresse : #DEV-2026-001, #reglages, sinon la liste ----
@@ -208,14 +219,36 @@
   }
   window.addEventListener('hashchange', router);
 
-  // Liste modifiée dans un autre onglet : la liste affichée suit.
+  // Liste modifiée dans un autre onglet : la liste affichée suit ; un devis ouvert qui y a été supprimé ramène à la liste.
   window.addEventListener('storage', (e) => {
-    if (e.key === CLE_DEVIS && !ecrans.liste.hidden) dessinerListe();
+    if (e.key !== CLE_DEVIS) return;
+    if (!ecrans.liste.hidden) dessinerListe();
+    else if (devis && !tousLesDevis().some((d) => d.numero === devis.numero)) location.hash = '';
   });
 
-  // ---- Liste ----
+  // ---- Statuts ----
+  // Changés à la main seulement, depuis la liste ou l'écran du devis ; jamais imprimés.
 
-  const STATUTS = { brouillon: 'Brouillon' };
+  const STATUTS = { brouillon: 'Brouillon', envoye: 'Envoyé', accepte: 'Accepté', refuse: 'Refusé' };
+  const statutConnu = (s) => (Object.prototype.hasOwnProperty.call(STATUTS, s) ? s : 'brouillon');
+
+  function remplirMenuStatut(menu, statut) {
+    if (!menu.options.length) {
+      Object.keys(STATUTS).forEach((k) => menu.add(new Option(STATUTS[k], k)));
+    }
+    menu.value = statutConnu(statut);
+    menu.className = 'statut statut-' + menu.value;
+  }
+
+  function changerStatut(numero, statut) {
+    const liste = tousLesDevis();
+    const d = liste.find((x) => x.numero === numero);
+    if (!d) return;
+    d.statut = statutConnu(statut);
+    ecrire(CLE_DEVIS, liste);
+  }
+
+  // ---- Liste ----
 
   function dateCourte(iso) {
     const [a, m, j] = String(iso).split('-');
@@ -236,6 +269,7 @@
         ['col-date', dateCourte(d.date)],
         ['col-nombre', Calc.formatEuros(Calc.totaux(d.lignes || [], d.tva, d.remise).ttc)],
         ['col-statut', null],
+        ['col-actions', null],
       ];
       cellules.forEach(([classe, texte]) => {
         const td = document.createElement('td');
@@ -247,20 +281,49 @@
       lien.href = '#' + d.numero;
       lien.textContent = d.numero;
       tr.querySelector('.col-numero').appendChild(lien);
-      const statut = document.createElement('span');
-      statut.className = 'statut statut-' + d.statut;
-      statut.textContent = STATUTS[d.statut] || d.statut;
-      tr.querySelector('.col-statut').appendChild(statut);
+      const menu = document.createElement('select');
+      menu.setAttribute('aria-label', 'Statut de ' + d.numero);
+      remplirMenuStatut(menu, d.statut);
+      tr.querySelector('.col-statut').appendChild(menu);
+      const supprimer = document.createElement('button');
+      supprimer.type = 'button';
+      supprimer.className = 'supprimer-devis';
+      supprimer.textContent = 'Supprimer';
+      supprimer.setAttribute('aria-label', 'Supprimer ' + d.numero);
+      tr.querySelector('.col-actions').appendChild(supprimer);
       corps.appendChild(tr);
     });
     $('liste-vide').hidden = liste.length > 0;
     $('liste-devis').hidden = liste.length === 0;
   }
 
+  // Un clic sur la ligne ouvre le devis, sauf sur le lien, le statut ou « Supprimer ».
   $('liste-lignes').addEventListener('click', (e) => {
     const tr = e.target.closest('tr[data-numero]');
-    if (tr && !e.target.closest('a')) location.hash = tr.dataset.numero;
+    if (!tr) return;
+    if (e.target.closest('.supprimer-devis')) supprimerDevis(tr.dataset.numero);
+    else if (!e.target.closest('a, select')) location.hash = tr.dataset.numero;
   });
+
+  $('liste-lignes').addEventListener('change', (e) => {
+    const tr = e.target.closest('tr[data-numero]');
+    if (!tr || e.target.tagName !== 'SELECT') return;
+    changerStatut(tr.dataset.numero, e.target.value);
+    remplirMenuStatut(e.target, e.target.value);
+  });
+
+  // Suppression définitive après confirmation, quel que soit le statut ; le numéro n'est plus jamais donné.
+  function supprimerDevis(numero) {
+    const d = tousLesDevis().find((x) => x.numero === numero);
+    if (!d) return;
+    const nom = d.client && d.client.nom.trim();
+    const question = 'Supprimer le devis ' + numero + (nom ? ' (' + nom + ')' : '') + ' ? Ce numéro ne sera plus jamais donné.';
+    if (!window.confirm(question)) return;
+    const supprimes = numerosSupprimes();
+    if (supprimes.indexOf(numero) === -1) ecrire(CLE_SUPPRIMES, supprimes.concat(numero));
+    ecrire(CLE_DEVIS, tousLesDevis().filter((x) => x.numero !== numero));
+    dessinerListe();
+  }
 
   // ---- Création et ouverture ----
 
@@ -321,6 +384,7 @@
     $('validite').value = devis.validite;
     $('conditions').value = devis.conditions;
     $('devis-numero-barre').textContent = devis.numero;
+    remplirMenuStatut($('devis-statut'), devis.statut);
     poserPiedDePage(devis.numero);
     refusAffiche = false;
     afficherEcran('devis');
@@ -403,6 +467,13 @@
       enregistrer();
       rafraichir();
     });
+  });
+
+  // Statut depuis l'écran du devis : enregistré, sans toucher à l'aperçu.
+  $('devis-statut').addEventListener('change', (e) => {
+    devis.statut = statutConnu(e.target.value);
+    remplirMenuStatut(e.target, devis.statut);
+    enregistrer();
   });
 
   $('tva-choix').addEventListener('change', (e) => {
