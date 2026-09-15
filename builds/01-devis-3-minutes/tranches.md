@@ -160,6 +160,7 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 
 **Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 25 s).
 **Fichiers :** `index.html`, `styles.css`, `app.js`, `calc.js`, `tests/calc.test.js`, `tests/page.js`, `tests/chrome.js`, `builds/01-devis-3-minutes/a-trancher.md`, `builds/01-devis-3-minutes/captures/05-reglages-valeurs.png`, `05-nouveau-devis-haut.png`, `05-nouveau-devis-bas.png`, `05-date-validite-modifiees.png`, `05-conditions-ajustees.png`, `05-validite-refusee.png`, `05-pdf.png`.
+**Audit :** fusionner, `audits/05.md` — les 7 lignes Fait quand tiennent à l'écran et dans un PDF de deux pages, les deux contrôles passent.
 
 ## 06 — Saisie contrôlée et PDF refusé s'il manque quelque chose
 
