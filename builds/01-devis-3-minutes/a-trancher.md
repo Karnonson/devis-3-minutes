@@ -8,7 +8,7 @@
 - Juste sous « Total », avant « Acompte à la commande » et « Reste à payer ».
 - En bas du devis, avec les conditions.
 **En attendant :** la mention est sous tout le bloc des totaux, après « Reste à payer » (capture `captures/04-tva-0.png`). La déplacer sous « Total » ou vers les conditions ne touche qu'une ligne de l'aperçu et une ligne du contrôle automatique.
-**Réponse :**
+**Réponse :** sous tout le bloc des totaux, après « Reste à payer », en petit et aligné à droite — ce qui est en place.
 
 ## 05 — Contenu du cadre « Bon pour accord »
 
@@ -18,7 +18,7 @@
 - Les mêmes, avec une ligne d'aide « Date, signature et mention manuscrite « Bon pour accord » ».
 - Les mêmes, avec en plus une case « Nom et qualité du signataire ».
 **En attendant :** le cadre a le titre et deux cases vides « Date » et « Signature », à droite sous les conditions (captures `captures/05-nouveau-devis-bas.png` et `captures/05-pdf.png`). Ajouter une ligne d'aide ou une case ne touche que le cadre de l'aperçu et une ligne du contrôle automatique.
-**Réponse :**
+**Réponse :** le titre « Bon pour accord » et deux cases vides, « Date » et « Signature » — ce qui est en place.
 
 ## 06 — Cases rouges hors client et lignes au moment du PDF
 
@@ -27,7 +27,7 @@
 - Refuser : toute case rouge du devis bloque le PDF et apparaît dans la liste des manques (« Remise à corriger »…).
 - Laisser sortir : seuls le client, les lignes, les quantités et les prix bloquent ; une remise ou un acompte refusé compte pour 0 %, une validité refusée n'imprime pas « Valable jusqu'au », une date incomplète garde la dernière date complète.
 **En attendant :** le PDF est refusé et la liste dit quoi corriger. Laisser sortir revient à retirer quatre lignes de la liste des manques dans `app.js` et un passage du contrôle automatique.
-**Réponse :**
+**Réponse :** refuser : toute case rouge du devis bloque le PDF — ce qui est en place.
 
 ## 08 — Où se trouve « Supprimer » un devis
 
@@ -37,7 +37,7 @@
 - Depuis l'écran du devis seulement, dans la barre du haut, à côté du statut.
 - Des deux endroits.
 **En attendant :** « Supprimer » est en bout de chaque ligne de la liste, avec la confirmation de Chrome (capture `captures/08-liste-statuts.png`). L'ajouter sur l'écran du devis est un bouton de plus dans la barre, qui reprend la même suppression, et un passage du contrôle automatique.
-**Réponse :**
+**Réponse :** depuis la liste seulement — ce qui est en place.
 
 ## 08 — Couleurs des statuts
 
@@ -47,7 +47,7 @@
 - Façon Stripe : « Accepté » en vert sapin pâle et « Refusé » en rouge pâle, les deux autres comme ci-dessus.
 - Toutes les pastilles grises, seul le mot change.
 **En attendant :** les pastilles restent dans les tons bleu nuit, pour garder le vert sapin aux boutons et au total TTC comme le dit **Apparence** (capture `captures/08-liste-statuts.png`). Changer les couleurs ne touche que quatre lignes de `styles.css`.
-**Réponse :**
+**Réponse :** sans vert, dans les tons bleu nuit — ce qui est en place.
 
 ## 09 — Allure des lignes « à relire »
 
@@ -57,7 +57,7 @@
 - Même chose en bleu pâle, dans les tons bleu nuit de la page.
 - Fond blanc, seulement la pastille « À relire » et la case « Relue ».
 **En attendant :** fond ambre pâle, distinct du rouge des erreurs et du vert sapin des boutons (capture `captures/09-copie-a-relire.png`). Changer la teinte ne touche que quelques lignes de `styles.css`.
-**Réponse :**
+**Réponse :** fond ambre pâle, filet ambre, pastille « À relire » et case « Relue » — ce qui est en place.
 
 ## 09 — Le rappel des lignes à relire au moment du PDF
 
@@ -67,7 +67,7 @@
 - Une boîte de Chrome « 2 lignes encore à relire » à fermer d'un clic avant que la fenêtre d'impression s'ouvre.
 - Un court message à côté du bouton « Sortir le PDF », sans la liste des lignes.
 **En attendant :** l'encadré en haut de la saisie, qui ne demande aucun clic de plus (capture `captures/09-pdf-rappel.png`). Passer à une boîte de Chrome est une ligne dans `app.js` et un passage du contrôle automatique, mais ajoute un clic chaque soir.
-**Réponse :**
+**Réponse :** l'encadré en haut de la saisie, sans clic de plus — ce qui est en place.
 
 ## 10 — Allure du nom de l'ancien client signalé
 
@@ -77,7 +77,7 @@
 - La case entière entourée en rouge, avec la même note, sans surligner le mot.
 - Le mot surligné seulement, sans note sous la ligne.
 **En attendant :** le mot surligné et la note (captures `captures/10-karma-signale.png` et `captures/10-titre-et-casse.png`). Retirer la note ou passer à la case entourée ne touche que quelques lignes de `styles.css` et de `app.js`, et un passage du contrôle automatique.
-**Réponse :**
+**Réponse :** le mot surligné en rouge avec la note sous la ligne — ce qui est en place.
 
 ## 10 — Le nom de l'ancien client à l'intérieur d'un autre mot
 
@@ -86,4 +86,4 @@
 - Non : seul le mot entier est signalé, pour ne pas voir en rouge des mots sans rapport avec un nom court (« Lune » dans « Lunettes »).
 - Oui : toute suite de lettres identique au nom est signalée, même au milieu d'un mot.
 **En attendant :** seul le mot entier est signalé. Signaler aussi à l'intérieur des mots est une ligne dans `app.js` et un passage du contrôle automatique.
-**Réponse :**
+**Réponse :** non, seul le mot entier est signalé — ce qui est en place.
