@@ -82,11 +82,15 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 - [x] Sans n° de TVA intracommunautaire, l'aperçu n'a aucune case ni libellé vide à sa place. *(story 8)*
 - [x] « Prochain numéro » réglé à 23 : le devis suivant reçoit DEV-2026-023. *(story 9)*
 - [x] Dans une fenêtre de navigation privée de Chrome, la page s'ouvre sur des réglages vides, sans message d'erreur. *(story 60)*
-- [ ] La page demande à Chrome de garder ses données sans rien afficher ; l'onglet Application des outils de développement de Chrome montre le stockage du site comme persistant. *(story 61)*
-  *Ouvert :* la demande part bien à chaque ouverture, sans rien afficher (vu par le contrôle automatique), mais Chrome la refuse sur un profil neuf à `localhost:8000`, même avec la page mise en favori par un fichier de favoris posé dans le profil (essayé dans Chrome sans fenêtre) : il accorde la conservation selon ses propres critères (favori, fréquentation du site). L'onglet Application ne peut donc pas montrer « persistant » ici ; à revoir à la livraison, sur le vrai favori du consultant.
+- [x] La page demande à Chrome, à chaque ouverture et sans rien afficher, de garder ses données ; que Chrome l'accorde (stockage « persistant » dans l'onglet Application) dépend de ses propres critères et se regarde à la livraison, sur le favori du consultant. *(story 61)*
 - [x] Après avoir vidé les données du site, les réglages reviennent comme à la première ouverture et le « prochain numéro » s'y règle. *(story 63)*
 - [x] Un confrère qui ouvre la page dans un autre profil Chrome arrive sur des réglages vides et ne voit aucune donnée du consultant. *(story 72)*
 - [x] Le contrôle automatique de la page rejoue aussi la première ouverture, le renvoi vers les réglages et leur saisie.
+
+**Rectifié :**
+- Avant : « La page demande à Chrome de garder ses données sans rien afficher ; l'onglet Application des outils de développement de Chrome montre le stockage du site comme persistant. »
+- Après : « La page demande à Chrome, à chaque ouverture et sans rien afficher, de garder ses données ; que Chrome l'accorde (stockage « persistant » dans l'onglet Application) dépend de ses propres critères et se regarde à la livraison, sur le favori du consultant. »
+- Pourquoi : la demande part bien, mais Chrome décide seul de l'accorder (favori, fréquentation du site) et la refuse sur un profil neuf à `localhost:8000`, même avec un favori posé dans le profil. La story 61 de `spec.md` ne demande que la demande discrète : elle reste telle quelle.
 
 **Choisi :**
 - La page s'ouvre sur les réglages, avec la phrase d'accueil, chaque fois qu'on l'ouvre sans écran dans l'adresse et qu'il manque le nom, l'adresse ou le SIRET : première ouverture, données effacées, autre profil, navigation privée. La phrase d'accueil disparaît quand ces trois champs sont remplis, à la prochaine ouverture des réglages (pas pendant la frappe, pour que rien ne saute sous le curseur).
@@ -100,6 +104,7 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 
 **Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 20 s).
 **Fichiers :** `index.html`, `styles.css`, `app.js`, `tests/page.js`, `tests/chrome.js`, `builds/01-devis-3-minutes/captures/03-premiere-ouverture.png`, `03-renvoi-reglages.png`, `03-reglages-remplis.png`, `03-devis-coordonnees.png`.
+**Audit :** fusionner, `audits/03.md` — les 12 lignes Fait quand tiennent dans la page pilotée dans Chrome (la ligne sur la conservation rectifiée à ce que Chrome permet), `node --test` et `node --test tests/page.js` passent, rien hors de la tranche.
 
 ## 04 — Remise, TVA et acompte, justes au centime
 
