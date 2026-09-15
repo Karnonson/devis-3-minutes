@@ -80,7 +80,7 @@ Pendant la construction, tout se lance et s'essaie sur l'ordinateur, sans compte
 
 ## À faire à la main
 
-- [ ] Imprimer la fiche de contrôle en 5 points (decisions.md, Q25), la poser à côté du clavier et la cocher pour chaque devis Word envoyé jusqu'à la mise en service. *avant la construction*
+- [x] Imprimer la fiche de contrôle en 5 points (decisions.md, Q25), la poser à côté du clavier et la cocher pour chaque devis Word envoyé jusqu'à la mise en service. *avant la construction* *confirmé par la personne*
 - [ ] Noter le numéro du dernier devis Word envoyé, pour régler « prochain numéro ». *avant la livraison*
 - [ ] Rassembler ses coordonnées exactes : nom, adresse, SIRET, e-mail, téléphone et numéro de TVA intracommunautaire s'il en a un. *avant la livraison*
 - [ ] Créer le compte GitHub sur github.com (plan Free, sans carte), confirmer l'adresse e-mail et choisir un nom de compte définitif, qui fera partie de l'adresse de la page. *avant la livraison*
