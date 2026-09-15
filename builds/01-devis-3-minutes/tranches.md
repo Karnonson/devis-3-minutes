@@ -276,6 +276,7 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 
 **Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 45 s). Trajet du 6 octobre : `node --test tests/trajet.js` (environ 15 s). Contrôle automatique du PDF : `node --test tests/pdf.js` (environ 45 s, demande `pdftotext`).
 **Fichiers :** `index.html`, `styles.css`, `app.js`, `tests/page.js`, `tests/trajet.js`, `builds/01-devis-3-minutes/a-trancher.md`, `builds/01-devis-3-minutes/captures/10-karma-signale.png`, `10-titre-et-casse.png`, `10-karma-reecrit.png`, `10-copie-sans-client.png`, `10-adresse-refusee.png`, `10-liste-envoye.png`.
+**Audit :** fusionner, `audits/10.md` — les 3 lignes Fait quand tiennent (nom signalé qui suit la saisie, rien sans client d'origine, trajet du 6 octobre rejoué en entier), les quatre contrôles passent.
 
 ## Non placé
 
