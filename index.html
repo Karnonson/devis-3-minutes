@@ -144,6 +144,11 @@
 
     <div class="devis-corps">
       <form class="saisie" id="saisie" autocomplete="off" onsubmit="return false">
+        <div class="manques" id="manques" role="alert" hidden>
+          <p class="manques-titre">Le PDF n'est pas sorti. À compléter :</p>
+          <ul id="manques-liste"></ul>
+        </div>
+
         <fieldset class="bloc">
           <legend>Client</legend>
           <label class="champ">
@@ -248,6 +253,7 @@
           <output data-champ="total">0,00&nbsp;€</output>
         </div>
       </div>
+      <p class="aide erreur ligne-aide" hidden></p>
     </li>
   </template>
 

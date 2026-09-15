@@ -152,8 +152,38 @@ a.bouton { display: inline-block; text-decoration: none; }
 .champ-court { max-width: 160px; }
 .reglages-aide-bloc { margin: -4px 0 10px; }
 #validite-apercu { margin: -4px 0 12px; }
-.champ input.invalide, .champ input.invalide:focus { border-color: var(--rouge); }
-.champ input.invalide:focus { box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12); }
+.champ input.invalide, .champ input.invalide:focus,
+.champ .manquant, .champ .manquant:focus { border-color: var(--rouge); }
+.champ input.invalide:focus, .champ .manquant:focus { box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12); }
+.bouton.manquant, .bouton.manquant:hover { border-color: var(--rouge); }
+
+/* Refus du PDF : ce qui manque, en haut de la saisie. */
+.manques {
+  background: var(--blanc);
+  border: 1px solid var(--trait);
+  border-left: 3px solid var(--rouge);
+  border-radius: var(--rayon);
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+.manques-titre { margin: 0 0 6px; font-weight: 600; color: var(--rouge); }
+.manques ul { margin: 0; padding-left: 18px; }
+.manques li { margin: 2px 0; }
+.manques li::marker { color: var(--rouge); }
+.manques button {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--nuit);
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--nuit-pale);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.manques button:hover { color: var(--rouge); text-decoration-color: var(--rouge); }
+.manques button:focus-visible { outline: 2px solid var(--sapin); outline-offset: 2px; border-radius: 2px; }
+.ligne-aide { margin: -4px 0 10px; }
 
 /* ---- Écran du devis ---- */
 

@@ -15,10 +15,22 @@
     return Math.floor((2 * n + d) / (2 * d));
   }
 
+  // Quantité tapée → centièmes, plus de 0 et deux décimales au plus (« 0,5 » → 50) ; sinon null.
+  function lireQuantite(texte) {
+    const q = lireCentiemes(texte);
+    return q !== null && q > 0 ? q : null;
+  }
+
+  // Prix unitaire HT tapé → centimes, 0 ou plus et deux décimales au plus ; sinon null.
+  function lirePrix(texte) {
+    return lireCentiemes(texte);
+  }
+
   // Total d'une ligne en centimes : quantité (centièmes) × prix (centimes) / 100.
+  // Une quantité ou un prix refusé compte pour 0,00 €.
   function totalLigne(ligne) {
-    const q = lireCentiemes(ligne.quantite);
-    const p = lireCentiemes(ligne.prix);
+    const q = lireQuantite(ligne.quantite);
+    const p = lirePrix(ligne.prix);
     if (q === null || p === null) return 0;
     return diviserArrondi(q * p, 100);
   }
@@ -77,7 +89,8 @@
   }
 
   const api = {
-    lireCentiemes: lireCentiemes, lirePourcentage: lirePourcentage, totalLigne: totalLigne,
+    lireCentiemes: lireCentiemes, lireQuantite: lireQuantite, lirePrix: lirePrix,
+    lirePourcentage: lirePourcentage, totalLigne: totalLigne,
     totaux: totaux, formatEuros: formatEuros, formatPourcentage: formatPourcentage,
     lireJours: lireJours, ajouterJours: ajouterJours,
   };

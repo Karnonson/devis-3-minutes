@@ -17,6 +17,8 @@
   const feuille = $('feuille');
 
   let devis = null;
+  // Vrai après un clic refusé sur « Sortir le PDF », jusqu'à ce que tout soit complété ou le devis quitté.
+  let refusAffiche = false;
 
   function afficherEcran(nom) {
     Object.keys(ecrans).forEach((k) => { ecrans[k].hidden = k !== nom; });
@@ -309,6 +311,7 @@
     $('validite').value = devis.validite;
     $('conditions').value = devis.conditions;
     $('devis-numero-barre').textContent = devis.numero;
+    refusAffiche = false;
     afficherEcran('devis');
     dessinerLignes();
     $('client-nom').focus();
@@ -406,12 +409,14 @@
     });
   });
 
+  const DATE_COMPLETE = /^\d{4}-\d{2}-\d{2}$/;
+
   // Date du devis : une date incomplète est entourée en rouge et n'est pas enregistrée ; la dernière complète reste.
   $('devis-date').addEventListener('input', (e) => {
     const iso = e.target.value;
-    const valable = /^\d{4}-\d{2}-\d{2}$/.test(iso);
+    const valable = DATE_COMPLETE.test(iso);
     e.target.classList.toggle('invalide', !valable);
-    if (!valable) return;
+    if (!valable) { marquerManques(); return; }
     devis.date = iso;
     enregistrer();
     rafraichir();
@@ -541,7 +546,84 @@
           '<div class="f-accord-case f-accord-signature"><p class="f-etiquette">Signature</p></div>' +
         '</div>' +
       '</section>';
+
+    marquerManques();
   }
+
+  // ---- Saisie contrôlée ----
+
+  const vide = (texte) => !String(texte == null ? '' : texte).trim();
+
+  // Ce qui empêche le PDF de sortir, dans l'ordre de la saisie : [{ texte, case }].
+  function manquesDuDevis() {
+    const manques = [];
+    const manque = (texte, el) => manques.push({ texte: texte, el: el });
+    if (vide(devis.client.nom)) manque('Nom du client', $('client-nom'));
+    if (vide(devis.client.adresse)) manque('Adresse du client', $('client-adresse'));
+    if (devis.lignes.length === 0) manque('Au moins une ligne de prestation', $('ajouter-ligne'));
+    devis.lignes.forEach((l, i) => {
+      const li = listeLignes.children[i];
+      const champ = (c) => li.querySelector('[data-champ="' + c + '"]');
+      const rang = 'Ligne ' + (i + 1) + ' : ';
+      if (vide(l.titre)) manque(rang + 'titre', champ('titre'));
+      [['quantite', 'quantité', Calc.lireQuantite], ['prix', 'prix', Calc.lirePrix]].forEach(([c, nom, lireValeur]) => {
+        if (vide(l[c])) manque(rang + nom, champ(c));
+        else if (lireValeur(l[c]) === null) manque(rang + nom + ' à corriger', champ(c));
+      });
+    });
+    // Une case entourée en rouge ailleurs sur le devis bloque aussi le PDF.
+    if (Calc.lirePourcentage(devis.remise) === null) manque('Remise à corriger', $('remise'));
+    if (Calc.lirePourcentage(devis.acompte) === null) manque('Acompte à corriger', $('acompte'));
+    if (!DATE_COMPLETE.test($('devis-date').value)) manque('Date du devis à corriger', $('devis-date'));
+    if (Calc.lireJours(devis.validite) === null) manque('Validité à corriger', $('validite'));
+    return manques;
+  }
+
+  let manquesCourants = [];
+
+  // Quantité ou prix mal tapé : rouge tout de suite. Après un refus du PDF : liste des manques et cases vides en rouge,
+  // tenues à jour à chaque frappe ; la liste disparaît quand tout est complet.
+  function marquerManques() {
+    listeLignes.querySelectorAll('.ligne').forEach((li, i) => {
+      const l = devis.lignes[i];
+      const quantiteRefusee = !vide(l.quantite) && Calc.lireQuantite(l.quantite) === null;
+      const prixRefuse = !vide(l.prix) && Calc.lirePrix(l.prix) === null;
+      li.querySelector('[data-champ="quantite"]').classList.toggle('invalide', quantiteRefusee);
+      li.querySelector('[data-champ="prix"]').classList.toggle('invalide', prixRefuse);
+      const aide = li.querySelector('.ligne-aide');
+      aide.textContent = [
+        quantiteRefusee ? 'Quantité : plus de 0, deux décimales au plus.' : '',
+        prixRefuse ? 'Prix : 0 ou plus, deux décimales au plus.' : '',
+      ].filter(Boolean).join(' ');
+      aide.hidden = !aide.textContent;
+    });
+
+    const manques = manquesDuDevis();
+    if (manques.length === 0) refusAffiche = false;
+    manquesCourants = refusAffiche ? manques : [];
+    document.querySelectorAll('#saisie .manquant').forEach((el) => el.classList.remove('manquant'));
+    manquesCourants.forEach((m) => m.el.classList.add('manquant'));
+    const liste = $('manques-liste');
+    liste.textContent = '';
+    manquesCourants.forEach((m, i) => {
+      const li = document.createElement('li');
+      const bouton = document.createElement('button');
+      bouton.type = 'button';
+      bouton.dataset.manque = i;
+      bouton.textContent = m.texte;
+      li.appendChild(bouton);
+      liste.appendChild(li);
+    });
+    $('manques').hidden = !refusAffiche;
+    return manques;
+  }
+
+  // Un clic sur un manque met le curseur dans la case.
+  $('manques-liste').addEventListener('click', (e) => {
+    const bouton = e.target.closest('button[data-manque]');
+    const m = bouton && manquesCourants[Number(bouton.dataset.manque)];
+    if (m) m.el.focus();
+  });
 
   // L'aperçu garde les proportions A4 et se réduit si la place manque.
   const zoneApercu = $('apercu-zone');
@@ -556,10 +638,15 @@
 
   // ---- PDF ----
 
+  // Refusé tant qu'il manque quelque chose ; ne touche jamais au statut.
   $('sortir-pdf').addEventListener('click', () => {
-    const nom = devis.client.nom.trim();
+    refusAffiche = true;
+    if (marquerManques().length > 0) {
+      $('saisie').scrollTop = 0;
+      return;
+    }
     // Chrome propose le titre de la page comme nom du fichier PDF.
-    document.title = nom ? devis.numero + ' - ' + nom : devis.numero;
+    document.title = devis.numero + ' - ' + devis.client.nom.trim();
     window.print();
   });
 

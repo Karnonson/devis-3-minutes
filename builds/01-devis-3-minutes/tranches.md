@@ -167,13 +167,25 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 **À construire :** une quantité ou un prix mal tapé est entouré en rouge. Quand le consultant clique « Sortir le PDF » avec un devis incomplet, la page refuse, liste ce qui manque et entoure les cases en rouge ; il complète et le PDF sort. Sortir le PDF ne touche jamais au statut.
 **Bloqué par :** 02.
 **Fait quand :**
-- [ ] Une quantité de 0,5 est acceptée ; 0, un nombre négatif ou 0,125 ne le sont pas. *(story 27)*
-- [ ] Un prix négatif ou à trois décimales, ou une quantité refusée, est entouré en rouge et compte comme manquant. *(story 28)*
-- [ ] « Sortir le PDF » est refusé sans nom ou adresse du client, sans aucune ligne, ou avec une ligne sans titre, quantité ou prix. *(story 54)*
-- [ ] En cas de refus, la page liste les manques et entoure les cases concernées en rouge ; une fois complétées, le PDF sort. *(story 55)*
-- [ ] Une ligne à 0,00 € ne bloque pas le PDF. *(story 56)*
-- [ ] Après la sortie du PDF, le statut du devis est inchangé dans la liste. *(story 59)*
-- [ ] Le contrôle automatique de la page rejoue un PDF refusé, la liste des manques, puis le PDF accepté une fois complété.
+- [x] Une quantité de 0,5 est acceptée ; 0, un nombre négatif ou 0,125 ne le sont pas. *(story 27)*
+- [x] Un prix négatif ou à trois décimales, ou une quantité refusée, est entouré en rouge et compte comme manquant. *(story 28)*
+- [x] « Sortir le PDF » est refusé sans nom ou adresse du client, sans aucune ligne, ou avec une ligne sans titre, quantité ou prix. *(story 54)*
+- [x] En cas de refus, la page liste les manques et entoure les cases concernées en rouge ; une fois complétées, le PDF sort. *(story 55)*
+- [x] Une ligne à 0,00 € ne bloque pas le PDF. *(story 56)*
+- [x] Après la sortie du PDF, le statut du devis est inchangé dans la liste. *(story 59)*
+- [x] Le contrôle automatique de la page rejoue un PDF refusé, la liste des manques, puis le PDF accepté une fois complété.
+
+**Choisi :**
+- Une quantité (plus de 0, deux décimales au plus) ou un prix (0 ou plus, deux décimales au plus) mal tapé est entouré en rouge dès la frappe, avec sous la ligne « Quantité : plus de 0, deux décimales au plus. » ou « Prix : 0 ou plus, deux décimales au plus. » ; il reste tel que tapé et compte pour 0,00 € dans les totaux. Une case encore vide n'est pas rouge avant un clic sur « Sortir le PDF ».
+- Au refus, un encadré « Le PDF n'est pas sorti. À compléter : » s'ouvre en haut de la saisie (qui remonte en haut), avec les manques dans l'ordre de la saisie : « Nom du client », « Adresse du client », « Au moins une ligne de prestation », « Ligne 2 : titre », « Ligne 2 : quantité », « Ligne 2 : prix à corriger »… Chaque manque est cliquable et met le curseur dans sa case. Sans aucune ligne, c'est le bouton « Ajouter une ligne » qui est bordé de rouge.
+- Après un refus, la liste et le rouge suivent chaque frappe (une ligne ajoutée apparaît aussitôt avec ses cases vides en rouge) ; l'encadré disparaît dès que tout est complet, et on reclique sur « Sortir le PDF ». Quitter le devis efface l'encadré ; rien n'est enregistré.
+- Une remise ou un acompte hors de 0 à 100, une validité hors de 1 à 365 jours ou une date incomplète bloquent aussi le PDF (« Remise à corriger »…) : toute case rouge du devis bloque (voir `a-trancher.md`).
+- Le titre proposé à l'impression est toujours « <numéro> - <client> » : le cas « numéro seul » de la tranche 01 ne peut plus arriver.
+- Ctrl+P ou le menu Imprimer de Chrome ne passent pas par ce contrôle : seul le bouton « Sortir le PDF » est vérifié.
+- Le contrôle automatique voit l'impression par un témoin posé sur `window.print` (frontière entre la page et Chrome), qui relève le titre de la page à ce moment ; il rejoue aussi les quantités et prix refusés, la liste sans aucune ligne, une ligne ajoutée après le refus, un clic sur un manque et une remise refusée. Les calculs couvrent la lecture de la quantité et du prix (`node --test`). Essayés en plus à la main dans Chrome sans fenêtre : date effacée, validité 400 et acompte « abc » listés, puis PDF accepté.
+
+**Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 25 s).
+**Fichiers :** `index.html`, `styles.css`, `app.js`, `calc.js`, `tests/calc.test.js`, `tests/page.js`, `builds/01-devis-3-minutes/a-trancher.md`, `builds/01-devis-3-minutes/captures/06-saisie-refusee.png`, `06-pdf-refuse.png`, `06-manques-en-cours.png`, `06-pdf-accepte.png`.
 
 ## 07 — Un devis de plusieurs pages, lisible en noir et blanc
 

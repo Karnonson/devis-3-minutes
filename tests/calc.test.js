@@ -150,6 +150,20 @@ test('remise et acompte en pourcentage décimal, bornés de 0 à 100', () => {
   for (const refuse of ['101', '-5', '10,125', 'abc']) assert.equal(Calc.lirePourcentage(refuse), null, refuse);
 });
 
+test('quantité : plus de 0, deux décimales au plus ; prix : 0 ou plus, deux décimales au plus', () => {
+  for (const [texte, attendu] of [['0,5', 50], ['2', 200], ['1,25', 125], [' 3 ', 300], ['0,01', 1]]) {
+    assert.equal(Calc.lireQuantite(texte), attendu, texte);
+  }
+  for (const refuse of ['0', '0,00', '-1', '-0,5', '0,125', 'abc', '']) assert.equal(Calc.lireQuantite(refuse), null, refuse);
+  for (const [texte, attendu] of [['0', 0], ['450', 45000], ['1 800,00', 180000], ['0,05', 5]]) {
+    assert.equal(Calc.lirePrix(texte), attendu, texte);
+  }
+  for (const refuse of ['-5', '-0,01', '450,125', 'abc', '']) assert.equal(Calc.lirePrix(refuse), null, refuse);
+  // Une quantité refusée compte pour 0,00 € ; une ligne offerte (prix 0) aussi.
+  assert.equal(Calc.totalLigne({ quantite: '0,125', prix: '450' }), 0);
+  assert.equal(Calc.totalLigne({ quantite: '1', prix: '0' }), 0);
+});
+
 test('« Valable jusqu\'au » : date du devis plus la durée de validité, fin de mois et année bissextile comprises', () => {
   assert.equal(Calc.ajouterJours('2026-09-15', 30), '2026-10-15');
   assert.equal(Calc.ajouterJours('2026-10-06', 30), '2026-11-05');

@@ -19,3 +19,12 @@
 - Les mêmes, avec en plus une case « Nom et qualité du signataire ».
 **En attendant :** le cadre a le titre et deux cases vides « Date » et « Signature », à droite sous les conditions (captures `captures/05-nouveau-devis-bas.png` et `captures/05-pdf.png`). Ajouter une ligne d'aide ou une case ne touche que le cadre de l'aperçu et une ligne du contrôle automatique.
 **Réponse :**
+
+## 06 — Cases rouges hors client et lignes au moment du PDF
+
+**Question :** quand la remise, l'acompte, la validité ou la date du devis sont entourés en rouge (mal tapés), voulez-vous que « Sortir le PDF » refuse aussi, ou que le PDF sorte tel que l'aperçu le montre ?
+**Choix :**
+- Refuser : toute case rouge du devis bloque le PDF et apparaît dans la liste des manques (« Remise à corriger »…).
+- Laisser sortir : seuls le client, les lignes, les quantités et les prix bloquent ; une remise ou un acompte refusé compte pour 0 %, une validité refusée n'imprime pas « Valable jusqu'au », une date incomplète garde la dernière date complète.
+**En attendant :** le PDF est refusé et la liste dit quoi corriger. Laisser sortir revient à retirer quatre lignes de la liste des manques dans `app.js` et un passage du contrôle automatique.
+**Réponse :**

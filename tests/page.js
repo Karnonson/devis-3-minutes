@@ -682,3 +682,124 @@ test('réglages changés : aucun devis existant ne bouge, le devis créé ensuit
   assert.equal(normal(await onglet.texte('#feuille .f-conditions .texte-multiligne')), 'Paiement à réception de facture.');
   assert.deepEqual(onglet.erreurs, []);
 });
+
+// ---- Saisie contrôlée et PDF refusé s'il manque quelque chose (tranche 06) ----
+
+const ROUGE = 'rgb(180, 35, 24)';
+const estRouge = (o, sel) => o.evaluer(`getComputedStyle(document.querySelector(${JSON.stringify(sel)})).borderTopColor`).then((c) => c === ROUGE);
+// Les manques listés par la page après un refus, tels qu'affichés (vide si la liste est cachée).
+const manquesAffiches = (o) => o.evaluer(`(() => { const p = document.querySelector('#manques');
+  return p.offsetParent === null ? [] : [...p.querySelectorAll('li')].map((li) => li.innerText.trim()); })()`);
+// Impressions demandées à Chrome, relevées par le témoin posé sur window.print : titre de la page à ce moment.
+const impressions = (o) => o.evaluer('window.__impressions || []');
+
+async function poserTemoinImpression(o) {
+  await o.envoyer('Page.addScriptToEvaluateOnNewDocument', { source: `(() => {
+    window.__impressions = [];
+    const imprimer = window.print.bind(window);
+    window.print = () => { window.__impressions.push(document.title); return imprimer(); };
+  })()` });
+}
+
+test('quantité et prix mal tapés : entourés en rouge, 0,5 accepté, 0, négatif et 0,125 refusés', async () => {
+  await poserTemoinImpression(onglet);
+  await onglet.recharger();
+  await onglet.attendreTexte('#devis-numero-barre', num(26));
+  const q = ligneSaisie(1, 'quantite');
+  const p = ligneSaisie(1, 'prix');
+  const aide = () => onglet.texte('#lignes .ligne:nth-child(1) .ligne-aide');
+
+  // Cases encore vides : pas de rouge avant d'avoir demandé le PDF.
+  assert.equal(await estRouge(onglet, q), false);
+  assert.equal(await estRouge(onglet, p), false);
+
+  await onglet.taper(q, '0,5');
+  assert.equal(await estRouge(onglet, q), false, '0,5 accepté');
+  assert.equal(await aide(), null);
+  for (const refuse of ['0', '-2', '0,125']) {
+    await onglet.taper(q, refuse);
+    assert.equal(await estRouge(onglet, q), true, 'quantité ' + refuse + ' en rouge');
+    assert.equal(await aide(), 'Quantité : plus de 0, deux décimales au plus.');
+  }
+  await onglet.taper(q, '1');
+  for (const refuse of ['-5', '450,125']) {
+    await onglet.taper(p, refuse);
+    assert.equal(await estRouge(onglet, p), true, 'prix ' + refuse + ' en rouge');
+    assert.equal(await aide(), 'Prix : 0 ou plus, deux décimales au plus.');
+  }
+  for (const accepte of ['0', '450,50']) {
+    await onglet.taper(p, accepte);
+    assert.equal(await estRouge(onglet, p), false, 'prix ' + accepte + ' accepté');
+  }
+  assert.equal(await aide(), null);
+  await onglet.taper(q, '');
+  await onglet.taper(p, '');
+  assert.deepEqual(onglet.erreurs, []);
+});
+
+test('« Sortir le PDF » refusé : la page liste les manques et entoure les cases en rouge ; complété, le PDF sort, statut inchangé', async () => {
+  // Sans aucune ligne ni client : refusé.
+  onglet.dialogues.length = 0;
+  await onglet.cliquer('#lignes .ligne:nth-child(1) [data-action="supprimer"]');
+  await attendre(() => onglet.evaluer('document.querySelectorAll("#lignes .ligne").length === 0'), 'ligne supprimée');
+  await onglet.cliquer('#sortir-pdf');
+  await onglet.attendreTexte('#manques', 'Le PDF n\'est pas sorti');
+  assert.deepEqual(await manquesAffiches(onglet), ['Nom du client', 'Adresse du client', 'Au moins une ligne de prestation']);
+  assert.deepEqual(await impressions(onglet), []);
+  for (const sel of ['#client-nom', '#client-adresse', '#ajouter-ligne']) assert.equal(await estRouge(onglet, sel), true, sel + ' en rouge');
+  assert.equal(await estRouge(onglet, '#client-contact'), false, 'contact facultatif');
+
+  // Une ligne ajoutée : la liste suit, ses cases vides sont en rouge.
+  await onglet.cliquer('#ajouter-ligne');
+  assert.deepEqual(await manquesAffiches(onglet), ['Nom du client', 'Adresse du client', 'Ligne 1 : titre', 'Ligne 1 : quantité', 'Ligne 1 : prix']);
+  for (const champ of ['titre', 'quantite', 'prix']) assert.equal(await estRouge(onglet, ligneSaisie(1, champ)), true, champ + ' en rouge');
+  assert.equal(await estRouge(onglet, ligneSaisie(1, 'detail')), false, 'détail facultatif');
+  assert.equal(await estRouge(onglet, '#ajouter-ligne'), false);
+
+  // Quantité mal tapée et ligne offerte à 0,00 €.
+  await onglet.taper(ligneSaisie(1, 'quantite'), '0,125');
+  await onglet.cliquer('#ajouter-ligne');
+  await onglet.taper(ligneSaisie(2, 'titre'), 'Suivi à un mois');
+  await onglet.taper(ligneSaisie(2, 'quantite'), '1');
+  await onglet.taper(ligneSaisie(2, 'prix'), '0');
+  await onglet.taper('#remise', '150');
+  await onglet.cliquer('#sortir-pdf');
+  assert.deepEqual(await manquesAffiches(onglet), ['Nom du client', 'Adresse du client', 'Ligne 1 : titre', 'Ligne 1 : quantité à corriger', 'Ligne 1 : prix', 'Remise à corriger']);
+  for (const champ of ['titre', 'quantite', 'prix']) assert.equal(await estRouge(onglet, ligneSaisie(2, champ)), false, 'ligne 2 ' + champ);
+  assert.deepEqual(await impressions(onglet), []);
+
+  // On complète : chaque case remplie perd son rouge et quitte la liste.
+  await onglet.taper('#client-nom', 'Studio Lune');
+  assert.equal(await estRouge(onglet, '#client-nom'), false);
+  assert.equal((await manquesAffiches(onglet))[0], 'Adresse du client');
+  // Un clic sur un manque met le curseur dans la case.
+  await onglet.cliquer('#manques li:nth-child(1) button');
+  assert.equal(await onglet.evaluer('document.activeElement.id'), 'client-adresse');
+  await onglet.taper('#client-adresse', '3 place du Marché\n35000 Rennes');
+  await onglet.taper(ligneSaisie(1, 'titre'), 'Atelier de cadrage');
+  await onglet.taper(ligneSaisie(1, 'quantite'), '0,5');
+  await onglet.taper(ligneSaisie(1, 'prix'), '900');
+  assert.deepEqual(await manquesAffiches(onglet), ['Remise à corriger']);
+  await onglet.taper('#remise', '0');
+  assert.deepEqual(await manquesAffiches(onglet), []);
+  for (const sel of ['#client-nom', '#client-adresse', ligneSaisie(1, 'titre'), ligneSaisie(1, 'quantite'), ligneSaisie(1, 'prix'), '#remise']) {
+    assert.equal(await estRouge(onglet, sel), false, sel);
+  }
+
+  // Complet, une ligne à 0,00 € comprise : le PDF sort avec « <numéro> - <client> ».
+  assert.deepEqual((await onglet.evaluer(`[...document.querySelectorAll('#feuille .f-tableau tbody tr:nth-child(2) td')].map((td) => td.innerText.trim())`)).map(normal),
+    ['Suivi à un mois', '1', '0,00 €', '0,00 €']);
+  await onglet.cliquer('#sortir-pdf');
+  assert.deepEqual(await impressions(onglet), [`${num(26)} - Studio Lune`]);
+  assert.deepEqual(await manquesAffiches(onglet), []);
+  assert.deepEqual(onglet.dialogues, ['Supprimer la ligne 1 ?']);
+
+  // Le statut n'a pas bougé, ni tout de suite, ni après rechargement.
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', num(26));
+  assert.deepEqual((await lignesDeLaListe(onglet))[0], [num(26), 'Studio Lune', AUJOURDHUI, '495,00 €', 'Brouillon']);
+  await onglet.recharger();
+  await onglet.attendreTexte('#liste-lignes', num(26));
+  assert.deepEqual((await lignesDeLaListe(onglet))[0], [num(26), 'Studio Lune', AUJOURDHUI, '495,00 €', 'Brouillon']);
+  assert.deepEqual(onglet.erreurs, []);
+});
