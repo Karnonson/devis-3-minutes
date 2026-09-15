@@ -37,7 +37,7 @@
     </main>
   </section>
 
-  <!-- Réglages (tranche 03) -->
+  <!-- Réglages : la première ouverture arrive ici -->
   <section id="reglages" class="ecran" hidden>
     <header class="barre">
       <div class="barre-gauche">
@@ -45,9 +45,63 @@
         <span class="marque">Réglages</span>
       </div>
     </header>
-    <main class="page-corps">
+    <main class="page-corps reglages-corps">
       <h1 class="titre-ecran">Réglages</h1>
-      <p class="discret">Bientôt : vos coordonnées, votre SIRET et vos conditions se régleront ici.</p>
+      <div class="accueil" id="accueil" hidden>
+        <p class="accueil-titre">Bienvenue dans Devis 3 minutes.</p>
+        <p>Tapez une fois vos coordonnées : elles seront reprises sur chaque nouveau devis. Le nom, l'adresse et le SIRET sont nécessaires pour créer un devis.</p>
+      </div>
+      <p class="discret reglages-note">Tout s'enregistre à chaque frappe, dans ce navigateur, sur cet ordinateur.</p>
+
+      <form id="form-reglages" autocomplete="off" onsubmit="return false">
+        <fieldset class="bloc">
+          <legend>Vos coordonnées</legend>
+          <label class="champ">
+            <span>Nom <em class="requis">obligatoire</em></span>
+            <input type="text" data-reglage="nom" placeholder="Marie Martin EI">
+            <small class="aide">Votre nom suivi de « EI ».</small>
+          </label>
+          <label class="champ">
+            <span>Adresse <em class="requis">obligatoire</em></span>
+            <textarea data-reglage="adresse" rows="3" placeholder="8 rue du Port&#10;44000 Nantes"></textarea>
+          </label>
+          <label class="champ">
+            <span>SIRET <em class="requis">obligatoire</em></span>
+            <input type="text" inputmode="numeric" data-reglage="siret" placeholder="123 456 789 00012">
+          </label>
+          <div class="champs-cote">
+            <label class="champ">
+              <span>E-mail</span>
+              <input type="email" data-reglage="email" placeholder="marie@exemple.fr">
+            </label>
+            <label class="champ">
+              <span>Téléphone</span>
+              <input type="tel" data-reglage="telephone" placeholder="06 12 34 56 78">
+            </label>
+          </div>
+          <label class="champ">
+            <span>N° de TVA intracommunautaire <em>facultatif</em></span>
+            <input type="text" data-reglage="tvaIntra" placeholder="FR12 123456789">
+          </label>
+        </fieldset>
+
+        <fieldset class="bloc">
+          <legend>Numérotation</legend>
+          <label class="champ champ-court">
+            <span>Prochain numéro</span>
+            <input type="text" inputmode="numeric" id="prochain-numero">
+          </label>
+          <p class="aide" id="prochain-apercu"></p>
+        </fieldset>
+
+        <fieldset class="bloc">
+          <legend>Modèle de conditions</legend>
+          <label class="champ">
+            <span>Conditions <em>reprises par chaque nouveau devis</em></span>
+            <textarea data-reglage="conditions" rows="7"></textarea>
+          </label>
+        </fieldset>
+      </form>
     </main>
   </section>
 

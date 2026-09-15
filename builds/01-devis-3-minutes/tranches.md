@@ -74,18 +74,32 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 **À construire :** à la toute première ouverture, la page montre les réglages avec une phrase d'accueil. Le consultant y tape une fois ses coordonnées, son SIRET et le prochain numéro, relit le modèle de conditions, et ses coordonnées sont recopiées dans chaque nouveau devis au moment de sa création, puis affichées sur l'aperçu. « Nouveau devis » renvoie vers les réglages tant qu'il manque l'essentiel.
 **Bloqué par :** 02.
 **Fait quand :**
-- [ ] Mémoire de `localhost:8000` vidée, la page s'ouvre sur les réglages avec une phrase d'accueil, les champs obligatoires signalés et le modèle de conditions déjà rempli. *(story 1)*
-- [ ] Tant que le nom, l'adresse ou le SIRET manquent, « Nouveau devis » renvoie vers les réglages. *(story 2)*
-- [ ] Les réglages acceptent nom suivi de « EI », adresse, SIRET, e-mail, téléphone et n° de TVA intracommunautaire, et un nouveau devis les affiche sans rien retaper. *(story 4)*
-- [ ] Le modèle de conditions pré-rempli se lit et se modifie dans les réglages. *(story 6)*
-- [ ] Une modification des réglages est encore là après rechargement, sans bouton. *(story 7)*
-- [ ] Sans n° de TVA intracommunautaire, l'aperçu n'a aucune case ni libellé vide à sa place. *(story 8)*
-- [ ] « Prochain numéro » réglé à 23 : le devis suivant reçoit DEV-2026-023. *(story 9)*
-- [ ] Dans une fenêtre de navigation privée de Chrome, la page s'ouvre sur des réglages vides, sans message d'erreur. *(story 60)*
+- [x] Mémoire de `localhost:8000` vidée, la page s'ouvre sur les réglages avec une phrase d'accueil, les champs obligatoires signalés et le modèle de conditions déjà rempli. *(story 1)*
+- [x] Tant que le nom, l'adresse ou le SIRET manquent, « Nouveau devis » renvoie vers les réglages. *(story 2)*
+- [x] Les réglages acceptent nom suivi de « EI », adresse, SIRET, e-mail, téléphone et n° de TVA intracommunautaire, et un nouveau devis les affiche sans rien retaper. *(story 4)*
+- [x] Le modèle de conditions pré-rempli se lit et se modifie dans les réglages. *(story 6)*
+- [x] Une modification des réglages est encore là après rechargement, sans bouton. *(story 7)*
+- [x] Sans n° de TVA intracommunautaire, l'aperçu n'a aucune case ni libellé vide à sa place. *(story 8)*
+- [x] « Prochain numéro » réglé à 23 : le devis suivant reçoit DEV-2026-023. *(story 9)*
+- [x] Dans une fenêtre de navigation privée de Chrome, la page s'ouvre sur des réglages vides, sans message d'erreur. *(story 60)*
 - [ ] La page demande à Chrome de garder ses données sans rien afficher ; l'onglet Application des outils de développement de Chrome montre le stockage du site comme persistant. *(story 61)*
-- [ ] Après avoir vidé les données du site, les réglages reviennent comme à la première ouverture et le « prochain numéro » s'y règle. *(story 63)*
-- [ ] Un confrère qui ouvre la page dans un autre profil Chrome arrive sur des réglages vides et ne voit aucune donnée du consultant. *(story 72)*
-- [ ] Le contrôle automatique de la page rejoue aussi la première ouverture, le renvoi vers les réglages et leur saisie.
+  *Ouvert :* la demande part bien à chaque ouverture, sans rien afficher (vu par le contrôle automatique), mais Chrome la refuse sur un profil neuf à `localhost:8000`, même avec la page mise en favori par un fichier de favoris posé dans le profil (essayé dans Chrome sans fenêtre) : il accorde la conservation selon ses propres critères (favori, fréquentation du site). L'onglet Application ne peut donc pas montrer « persistant » ici ; à revoir à la livraison, sur le vrai favori du consultant.
+- [x] Après avoir vidé les données du site, les réglages reviennent comme à la première ouverture et le « prochain numéro » s'y règle. *(story 63)*
+- [x] Un confrère qui ouvre la page dans un autre profil Chrome arrive sur des réglages vides et ne voit aucune donnée du consultant. *(story 72)*
+- [x] Le contrôle automatique de la page rejoue aussi la première ouverture, le renvoi vers les réglages et leur saisie.
+
+**Choisi :**
+- La page s'ouvre sur les réglages, avec la phrase d'accueil, chaque fois qu'on l'ouvre sans écran dans l'adresse et qu'il manque le nom, l'adresse ou le SIRET : première ouverture, données effacées, autre profil, navigation privée. La phrase d'accueil disparaît quand ces trois champs sont remplis, à la prochaine ouverture des réglages (pas pendant la frappe, pour que rien ne saute sous le curseur).
+- « Nouveau devis » renvoie vers les réglages sans message de plus : la phrase d'accueil explique, et le curseur est posé dans le premier champ essentiel vide. Aucun numéro n'est consommé par un renvoi.
+- Les champs essentiels portent « obligatoire » à côté du libellé, comme « facultatif » ailleurs. Aucun contrôle de forme sur le SIRET, l'e-mail ou le téléphone : ils sont gardés tels que tapés.
+- Les réglages tiennent dans une troisième clé, `devis-3-minutes:reglages`. « Prochain numéro » est un nombre (23) écrit dans `devis-3-minutes:compteur` pour l'année en cours ; dessous, « Prochain devis : DEV-2026-023. » montre le numéro qui sera vraiment donné, et signale s'il existe déjà dans la liste. Une saisie qui n'est pas un entier à partir de 1 est entourée en rouge et n'est pas enregistrée.
+- Chaque nouveau devis garde une copie des coordonnées du jour de sa création, affichée en haut à gauche de l'aperçu : nom en gras, adresse, e-mail, téléphone, puis SIRET et n° de TVA intracommunautaire plus petits ; un champ vide n'imprime rien, libellé compris. Un devis créé avant cette tranche n'a pas de copie et garde un en-tête gauche vide.
+- Texte du modèle de conditions : acompte à la commande et solde à réception de facture sous 30 jours ; pénalités à trois fois le taux d'intérêt légal et indemnité de 40 € pour les clients professionnels ; « Devis gratuit » et rappel de « Valable jusqu'au ». Il se lit et se modifie dans les réglages ; sa reprise sur le devis, comme la TVA, l'acompte et la validité habituels, est la tranche 05.
+- La demande de conservation (`navigator.storage.persist()`) part à chaque ouverture de la page, sans rien afficher.
+- Dans le contrôle automatique : la navigation privée est un contexte de navigation séparé de Chrome sans fenêtre (celui qu'utilise la navigation privée), le confrère un second profil neuf, et « vider les données du site » l'effacement de toutes les données de `http://localhost:8000` par le protocole de débogage. La demande de conservation est vue par un témoin posé sur `navigator.storage.persist`, à la frontière entre la page et Chrome. `tests/chrome.js` sait maintenant ouvrir un onglet privé, relever les erreurs JavaScript de la page et vider une case.
+
+**Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 20 s).
+**Fichiers :** `index.html`, `styles.css`, `app.js`, `tests/page.js`, `tests/chrome.js`, `builds/01-devis-3-minutes/captures/03-premiere-ouverture.png`, `03-renvoi-reglages.png`, `03-reglages-remplis.png`, `03-devis-coordonnees.png`.
 
 ## 04 — Remise, TVA et acompte, justes au centime
 

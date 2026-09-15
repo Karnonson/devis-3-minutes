@@ -1,4 +1,4 @@
-// Devis 3 minutes — la page : liste des devis, écran du devis avec aperçu A4, PDF par l'impression.
+// Devis 3 minutes — la page : réglages, liste des devis, écran du devis avec aperçu A4, PDF par l'impression.
 // Tout est gardé dans la mémoire de Chrome (localStorage), à chaque frappe.
 (function () {
   'use strict';
@@ -23,6 +23,10 @@
 
   const CLE_DEVIS = 'devis-3-minutes:devis';
   const CLE_COMPTEUR = 'devis-3-minutes:compteur';
+  const CLE_REGLAGES = 'devis-3-minutes:reglages';
+
+  // Demande discrète à Chrome de ne pas effacer ces données de lui-même ; rien ne s'affiche.
+  try { navigator.storage.persist().catch(() => {}); } catch (e) { /* non disponible */ }
 
   function lire(cle, defaut) {
     try {
@@ -53,17 +57,95 @@
 
   const deuxChiffres = (n) => String(n).padStart(2, '0');
 
-  // Numéro suivant de l'année en cours ; le compteur repart à 001 avec une nouvelle année.
-  function prochainNumero(liste) {
+  const formaterNumero = (annee, n) => 'DEV-' + annee + '-' + String(n).padStart(3, '0');
+
+  // Numéro que recevra le prochain devis, sans le consommer. Le compteur repart à 001 avec une
+  // nouvelle année et saute un numéro encore présent dans la liste.
+  function numeroSuivant(liste) {
     const annee = new Date().getFullYear();
     const c = lire(CLE_COMPTEUR, null);
     let n = c && c.annee === annee && c.prochain >= 1 ? c.prochain : 1;
     const pris = new Set(liste.map((d) => d.numero));
-    const numero = () => 'DEV-' + annee + '-' + String(n).padStart(3, '0');
-    while (pris.has(numero())) n++;
-    const resultat = numero();
-    ecrire(CLE_COMPTEUR, { annee: annee, prochain: n + 1 });
-    return resultat;
+    while (pris.has(formaterNumero(annee, n))) n++;
+    return { annee: annee, n: n };
+  }
+
+  function prochainNumero(liste) {
+    const s = numeroSuivant(liste);
+    ecrire(CLE_COMPTEUR, { annee: s.annee, prochain: s.n + 1 });
+    return formaterNumero(s.annee, s.n);
+  }
+
+  // ---- Réglages ----
+
+  const MODELE_CONDITIONS = [
+    'Acompte à la commande, solde à réception de la facture, payable sous 30 jours.',
+    'Clients professionnels : tout retard de paiement entraîne des pénalités au taux de trois fois le taux d\'intérêt légal et une indemnité forfaitaire pour frais de recouvrement de 40 €.',
+    'Devis gratuit. Offre valable jusqu\'à la date « Valable jusqu\'au » indiquée en haut du devis.',
+  ].join('\n');
+
+  const COORDONNEES = ['nom', 'adresse', 'siret', 'email', 'telephone', 'tvaIntra'];
+  const ESSENTIELS = ['nom', 'adresse', 'siret'];
+
+  function lireReglages() {
+    const r = lire(CLE_REGLAGES, null);
+    const base = { conditions: MODELE_CONDITIONS };
+    COORDONNEES.forEach((k) => { base[k] = ''; });
+    if (r && typeof r === 'object') {
+      Object.keys(base).forEach((k) => { if (typeof r[k] === 'string') base[k] = r[k]; });
+    }
+    return base;
+  }
+
+  // Le premier réglage essentiel encore vide (nom, adresse, SIRET), ou null.
+  function essentielManquant(reglages) {
+    return ESSENTIELS.find((k) => !reglages[k].trim()) || null;
+  }
+
+  const formReglages = $('form-reglages');
+
+  function afficherReglages() {
+    const r = lireReglages();
+    formReglages.querySelectorAll('[data-reglage]').forEach((el) => { el.value = r[el.dataset.reglage]; });
+    const s = numeroSuivant(tousLesDevis());
+    $('prochain-numero').value = String(s.n);
+    montrerProchainNumero(false);
+    const manque = essentielManquant(r);
+    $('accueil').hidden = !manque;
+    afficherEcran('reglages');
+    if (manque) formReglages.querySelector('[data-reglage="' + manque + '"]').focus();
+  }
+
+  formReglages.addEventListener('input', (e) => {
+    const cle = e.target.dataset.reglage;
+    if (!cle) return;
+    const r = lireReglages();
+    r[cle] = e.target.value;
+    ecrire(CLE_REGLAGES, r);
+  });
+
+  $('prochain-numero').addEventListener('input', () => montrerProchainNumero(true));
+
+  function lireProchainNumero() {
+    const t = $('prochain-numero').value.trim();
+    return /^\d{1,6}$/.test(t) && Number(t) >= 1 ? Number(t) : null;
+  }
+
+  function montrerProchainNumero(enregistrerNumero) {
+    const n = lireProchainNumero();
+    const aide = $('prochain-apercu');
+    const champ = $('prochain-numero');
+    champ.classList.toggle('invalide', n === null);
+    aide.classList.toggle('erreur', n === null);
+    if (n === null) {
+      aide.textContent = 'Un nombre entier, à partir de 1.';
+      return;
+    }
+    // Un numéro encore présent dans la liste est sauté : on montre celui qui sera vraiment donné.
+    if (enregistrerNumero) ecrire(CLE_COMPTEUR, { annee: new Date().getFullYear(), prochain: n });
+    const s = numeroSuivant(tousLesDevis());
+    aide.textContent = 'Prochain devis : ' + formaterNumero(s.annee, s.n) +
+      (s.n !== n ? ' (' + formaterNumero(s.annee, n) + ' existe déjà).' : '.');
   }
 
   // ---- Écrans et adresse : #DEV-2026-001, #reglages, sinon la liste ----
@@ -71,7 +153,8 @@
   function router() {
     const cible = decodeURIComponent(location.hash.slice(1));
     if (cible === 'reglages') {
-      afficherEcran('reglages');
+      devis = null;
+      afficherReglages();
     } else if (cible && ouvrirDevis(cible)) {
       afficherEcran('devis');
       ajusterApercu();
@@ -144,14 +227,23 @@
   }
 
   function nouveauDevis() {
+    const reglages = lireReglages();
+    if (essentielManquant(reglages)) {
+      if (location.hash === '#reglages') afficherReglages(); else location.hash = 'reglages';
+      return;
+    }
     const liste = tousLesDevis();
     const maintenant = new Date();
+    // Copie des coordonnées du jour : un changement de réglages ne touche pas ce devis.
+    const emetteur = {};
+    COORDONNEES.forEach((k) => { emetteur[k] = reglages[k]; });
     const d = {
       numero: prochainNumero(liste),
       cree: maintenant.toISOString(),
       date: maintenant.getFullYear() + '-' + deuxChiffres(maintenant.getMonth() + 1) + '-' + deuxChiffres(maintenant.getDate()),
       statut: 'brouillon',
       client: { nom: '', contact: '', adresse: '' },
+      emetteur: emetteur,
       lignes: [ligneVide()],
       tva: TAUX_TVA,
     };
@@ -266,6 +358,20 @@
       li.querySelector('output[data-champ="total"]').textContent = euros(t.lignes[i]);
     });
 
+    const m = devis.emetteur || {};
+    const rempli = (k) => typeof m[k] === 'string' && m[k].trim();
+    // Seuls les champs remplis s'impriment : pas de libellé vide (TVA intracommunautaire facultative).
+    const emetteur = [
+      rempli('nom') ? '<p class="emetteur-nom">' + echapper(m.nom.trim()) + '</p>' : '',
+      rempli('adresse') ? '<p class="texte-multiligne">' + echapper(m.adresse.trim()) + '</p>' : '',
+      rempli('email') ? '<p>' + echapper(m.email.trim()) + '</p>' : '',
+      rempli('telephone') ? '<p>' + echapper(m.telephone.trim()) + '</p>' : '',
+    ].join('');
+    const legal = [
+      rempli('siret') ? '<p>SIRET ' + echapper(m.siret.trim()) + '</p>' : '',
+      rempli('tvaIntra') ? '<p>N° TVA intracommunautaire ' + echapper(m.tvaIntra.trim()) + '</p>' : '',
+    ].join('');
+
     const c = devis.client;
     const client = [
       c.nom.trim() ? '<p class="client-nom">' + echapper(c.nom) + '</p>' : '',
@@ -287,7 +393,7 @@
 
     feuille.innerHTML =
       '<header class="f-entete">' +
-        '<div class="f-emetteur"></div>' +
+        '<div class="f-emetteur">' + emetteur + (legal ? '<div class="emetteur-legal">' + legal + '</div>' : '') + '</div>' +
         '<div class="f-document">' +
           '<h1>DEVIS</h1>' +
           '<p class="f-numero">' + echapper(devis.numero) + '</p>' +
@@ -338,5 +444,9 @@
 
   $('nouveau-devis').addEventListener('click', nouveauDevis);
   $('nouveau-devis-vide').addEventListener('click', nouveauDevis);
+
+  // Ouverture sans écran demandé et sans l'essentiel des réglages (première ouverture, données
+  // effacées, autre profil) : la page s'ouvre sur les réglages.
+  if (!location.hash.slice(1) && essentielManquant(lireReglages())) history.replaceState(null, '', '#reglages');
   router();
 })();

@@ -67,8 +67,11 @@ class Navigateur {
 
   ecouter(methode, session, fn) { this.ecouteurs.push({ methode, session, fn }); }
 
-  async onglet() {
-    const { targetId } = await this.envoyer('Target.createTarget', { url: 'about:blank' });
+  // Onglet du profil ; avec prive = true, dans un contexte séparé comme une fenêtre de navigation privée.
+  async onglet(prive = false) {
+    const cible = { url: 'about:blank' };
+    if (prive) cible.browserContextId = (await this.envoyer('Target.createBrowserContext')).browserContextId;
+    const { targetId } = await this.envoyer('Target.createTarget', cible);
     const { sessionId } = await this.envoyer('Target.attachToTarget', { targetId, flatten: true });
     const o = new Onglet(this, sessionId, targetId);
     await o.envoyer('Page.enable');
@@ -90,7 +93,11 @@ class Onglet {
     this.session = session;
     this.targetId = targetId;
     this.dialogues = [];
+    this.erreurs = [];
     this.reponseDialogue = true;
+    nav.ecouter('Runtime.exceptionThrown', session, (p) => {
+      this.erreurs.push(p.exceptionDetails.exception ? p.exceptionDetails.exception.description : p.exceptionDetails.text);
+    });
     nav.ecouter('Page.javascriptDialogOpening', session, (p) => {
       this.dialogues.push(p.message);
       this.envoyer('Page.handleJavaScriptDialog', { accept: this.reponseDialogue });
@@ -148,12 +155,17 @@ class Onglet {
     await this.envoyer('Input.dispatchMouseEvent', { type: 'mouseReleased', ...base });
   }
 
-  // Clique dans une case, sélectionne tout (Ctrl+A) et tape le texte à la place.
+  // Clique dans une case, sélectionne tout (Ctrl+A) et tape le texte à la place (texte vide : la case est vidée).
   async taper(selecteur, texte) {
     await this.cliquer(selecteur);
     const ctrlA = { key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 2, commands: ['selectAll'] };
     await this.envoyer('Input.dispatchKeyEvent', { type: 'keyDown', ...ctrlA });
     await this.envoyer('Input.dispatchKeyEvent', { type: 'keyUp', ...ctrlA });
+    if (texte === '') { // vider la case : touche Retour arrière sur la sélection
+      const retour = { key: 'Backspace', code: 'Backspace', windowsVirtualKeyCode: 8 };
+      await this.envoyer('Input.dispatchKeyEvent', { type: 'keyDown', ...retour });
+      await this.envoyer('Input.dispatchKeyEvent', { type: 'keyUp', ...retour });
+    }
     for (const c of texte) {
       if (c === '\n') {
         const entree = { key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13, text: '\r' };

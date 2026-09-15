@@ -25,7 +25,7 @@ let serveur = null;
 let nav = null;
 let onglet = null;
 
-const normal = (t) => (t === null ? t : t.replace(/[  ]/g, ' '));
+const normal = (t) => (t === null ? t : t.replace(/[\u00a0\u202f]/g, ' '));
 
 // Les lignes de la liste telles qu'affichées : [numéro, client, date, total TTC, statut].
 function lignesDeLaListe(o) {
@@ -36,6 +36,29 @@ function lignesDeLaListe(o) {
 }
 
 const valeur = (o, selecteur) => o.evaluer(`document.querySelector(${JSON.stringify(selecteur)}).value`);
+const reglage = (cle) => `#form-reglages [data-reglage="${cle}"]`;
+const COORDONNEES = ['nom', 'adresse', 'siret', 'email', 'telephone', 'tvaIntra'];
+
+// Ce que montre une première ouverture : réglages, phrase d'accueil, obligatoires signalés, champs vides,
+// modèle de conditions déjà rempli, numérotation à 001, aucune boîte de dialogue ni erreur.
+async function verifierPremiereOuverture(o) {
+  await o.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  assert.equal(await o.visible('#liste'), false);
+  assert.match(await o.texte('#accueil'), /Bienvenue/);
+  const libelle = (cle) => o.evaluer(`document.querySelector('${reglage(cle)}').closest('label').querySelector('span').innerText`);
+  for (const cle of ['nom', 'adresse', 'siret']) assert.match(await libelle(cle), /obligatoire/);
+  for (const cle of ['email', 'telephone', 'tvaIntra']) assert.doesNotMatch(await libelle(cle), /obligatoire/);
+  for (const cle of COORDONNEES) assert.equal(await valeur(o, reglage(cle)), '', cle + ' vide');
+  const conditions = await valeur(o, reglage('conditions'));
+  assert.match(conditions, /Acompte à la commande/);
+  assert.match(conditions, /trois fois le taux d'intérêt légal/);
+  assert.match(conditions, /40 €/);
+  assert.match(conditions, /Devis gratuit/);
+  assert.equal(await valeur(o, '#prochain-numero'), '1');
+  assert.equal(await o.texte('#prochain-apercu'), `Prochain devis : ${num(1)}.`);
+  assert.deepEqual(o.dialogues, []);
+  assert.deepEqual(o.erreurs, []);
+}
 
 async function pageRepond() {
   try { return (await fetch(URL_PAGE)).ok; } catch { return false; }
@@ -48,6 +71,12 @@ before(async () => {
   }
   nav = await lancerChrome(PROFIL);
   onglet = await nav.onglet();
+  // Témoin posé à la frontière entre la page et Chrome : compte les demandes de conservation des données.
+  await onglet.envoyer('Page.addScriptToEvaluateOnNewDocument', { source: `(() => {
+    window.__demandesConservation = 0;
+    const persist = navigator.storage.persist.bind(navigator.storage);
+    navigator.storage.persist = () => { window.__demandesConservation++; return persist(); };
+  })()` });
 });
 
 after(async () => {
@@ -56,27 +85,83 @@ after(async () => {
   fs.rmSync(PROFIL, { recursive: true, force: true });
 });
 
-test('mémoire vide : la liste est la page d\'accueil, « Aucun devis », Réglages et Nouveau devis en haut', async () => {
+test('mémoire vide : la page s\'ouvre sur les réglages, avec une phrase d\'accueil', async () => {
   await onglet.aller(URL_PAGE);
-  await onglet.attendreTexte('#liste .titre-ecran', 'Devis');
-  assert.equal(await onglet.texte('#liste .barre #ouvrir-reglages'), 'Réglages');
-  assert.equal(await onglet.texte('#liste .barre #nouveau-devis'), 'Nouveau devis');
-  const vide = await onglet.texte('#liste-vide');
-  assert.match(vide, /Aucun devis/);
-  assert.match(vide, /Nouveau devis/);
-  assert.equal(await onglet.visible('#liste-devis'), false);
+  await verifierPremiereOuverture(onglet);
+  // La page a demandé à Chrome de garder ses données, sans rien afficher.
+  assert.ok(await onglet.evaluer('window.__demandesConservation') >= 1);
+  assert.equal(await onglet.evaluer('document.querySelectorAll("#reglages button").length'), 0, 'aucun bouton Enregistrer');
 });
 
-test('Réglages n\'affiche encore qu\'un écran « bientôt », et on revient à la liste', async () => {
+test('tant que le nom, l\'adresse ou le SIRET manquent, « Nouveau devis » renvoie vers les réglages', async () => {
+  const focus = () => onglet.evaluer('document.activeElement.dataset.reglage || null');
+
+  await onglet.cliquer('#reglages .retour');
+  await onglet.attendreTexte('#liste-vide', 'Aucun devis');
+  assert.equal(await onglet.texte('#liste .barre #ouvrir-reglages'), 'Réglages');
+  assert.equal(await onglet.texte('#liste .barre #nouveau-devis'), 'Nouveau devis');
+  await onglet.cliquer('#nouveau-devis-vide');
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  assert.equal(await focus(), 'nom');
+
+  await onglet.taper(reglage('nom'), 'Marie Martin EI');
+  await onglet.cliquer('#reglages .retour');
+  await onglet.cliquer('#nouveau-devis');
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  assert.equal(await focus(), 'adresse');
+
+  await onglet.taper(reglage('adresse'), '8 rue du Port\n44000 Nantes');
+  await onglet.cliquer('#reglages .retour');
+  await onglet.cliquer('#nouveau-devis');
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  assert.equal(await focus(), 'siret');
+
+  // SIRET rempli mais nom effacé : toujours renvoyé.
+  await onglet.taper(reglage('siret'), '123 456 789 00012');
+  await onglet.taper(reglage('nom'), '');
+  await onglet.cliquer('#reglages .retour');
+  await onglet.cliquer('#nouveau-devis');
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  assert.equal(await focus(), 'nom');
+  await onglet.taper(reglage('nom'), 'Marie Martin EI');
+  await onglet.taper(reglage('email'), 'marie@exemple.fr');
+  await onglet.taper(reglage('telephone'), '06 12 34 56 78');
+
+  // Aucun devis ni numéro consommé par les renvois.
+  await onglet.cliquer('#reglages .retour');
+  await onglet.attendreTexte('#liste-vide', 'Aucun devis');
+  assert.deepEqual(onglet.dialogues, []);
+});
+
+test('réglages et modèle de conditions modifiés : encore là après rechargement, sans bouton', async () => {
   await onglet.cliquer('#ouvrir-reglages');
-  await onglet.attendreTexte('#reglages main', 'Bientôt');
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  assert.equal(await onglet.visible('#accueil'), false);
+  const conditions = await valeur(onglet, reglage('conditions'));
+  await onglet.taper(reglage('conditions'), conditions + '\nIBAN communiqué sur la facture.');
+  await onglet.recharger();
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  assert.equal(await valeur(onglet, reglage('nom')), 'Marie Martin EI');
+  assert.equal(await valeur(onglet, reglage('adresse')), '8 rue du Port\n44000 Nantes');
+  assert.equal(await valeur(onglet, reglage('siret')), '123 456 789 00012');
+  assert.equal(await valeur(onglet, reglage('email')), 'marie@exemple.fr');
+  assert.equal(await valeur(onglet, reglage('telephone')), '06 12 34 56 78');
+  assert.equal(await valeur(onglet, reglage('tvaIntra')), '');
+  assert.equal(await valeur(onglet, reglage('conditions')), conditions + '\nIBAN communiqué sur la facture.');
   await onglet.cliquer('#reglages .retour');
   await onglet.attendreTexte('#liste-vide', 'Aucun devis');
 });
 
-test('nouveau devis, saisie, retour à la liste, rechargement : le devis est dans la liste', async () => {
+test('nouveau devis : les coordonnées s\'affichent sans rien retaper, sans case vide pour la TVA intracommunautaire', async () => {
   await onglet.cliquer('#nouveau-devis-vide');
   await onglet.attendreTexte('#devis-numero-barre', num(1));
+  const emetteur = normal(await onglet.texte('#feuille .f-emetteur')).replace(/\n+/g, '\n');
+  assert.equal(emetteur, 'Marie Martin EI\n8 rue du Port\n44000 Nantes\nmarie@exemple.fr\n06 12 34 56 78\nSIRET 123 456 789 00012');
+  assert.doesNotMatch(await onglet.texte('#feuille'), /intracommunautaire/i);
+  assert.equal(await onglet.evaluer(`[...document.querySelectorAll('#feuille .f-emetteur *')].filter((el) => !el.innerText.trim()).length`), 0);
+});
+
+test('saisie, retour à la liste, rechargement : le devis est dans la liste', async () => {
   await onglet.taper('#client-nom', 'Acme SARL');
   await onglet.taper('#client-adresse', '12 rue des Lilas\n69003 Lyon');
   await onglet.taper('#lignes .ligne:nth-child(1) [data-champ="titre"]', 'Atelier de cadrage');
@@ -181,4 +266,73 @@ test('horloge de l\'ordinateur passée en 2027 : le devis suivant reçoit DEV-20
   await o.cliquer('#retour-liste');
   await o.attendreTexte('#liste-lignes', 'DEV-2027-001');
   assert.equal((await lignesDeLaListe(o))[0][0], 'DEV-2027-001');
+});
+
+test('N° de TVA intracommunautaire rempli : le devis suivant l\'affiche, le précédent ne change pas', async () => {
+  await onglet.cliquer('#ouvrir-reglages');
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  await onglet.taper(reglage('tvaIntra'), 'FR12 123456789');
+  await onglet.cliquer('#reglages .retour');
+  await onglet.cliquer('#nouveau-devis');
+  await onglet.attendreTexte('#devis-numero-barre', /DEV-/);
+  assert.match(normal(await onglet.texte('#feuille .f-emetteur')).replace(/\n+/g, '\n'), /SIRET 123 456 789 00012\nN° TVA intracommunautaire FR12 123456789$/);
+  await onglet.cliquer('#retour-liste');
+  await onglet.cliquer(`#liste-lignes a[href="#${num(1)}"]`);
+  await onglet.attendreTexte('#devis-numero-barre', num(1));
+  assert.doesNotMatch(await onglet.texte('#feuille'), /intracommunautaire/i);
+});
+
+test('navigation privée : réglages vides, sans message d\'erreur', async () => {
+  const prive = await nav.onglet(true);
+  await prive.aller(URL_PAGE);
+  await verifierPremiereOuverture(prive);
+  await prive.cliquer('#reglages .retour');
+  await prive.attendreTexte('#liste-vide', 'Aucun devis');
+  assert.doesNotMatch(await prive.evaluer('document.body.innerText'), /Marie Martin|Acme|Beta Studio/);
+  assert.deepEqual(prive.erreurs, []);
+  await prive.fermer();
+});
+
+test('un confrère dans un autre profil Chrome : réglages vides, aucune donnée du consultant', async () => {
+  const profil = fs.mkdtempSync(path.join(os.tmpdir(), 'devis-3-minutes-confrere-'));
+  const autreNav = await lancerChrome(profil);
+  try {
+    const o = await autreNav.onglet();
+    await o.aller(URL_PAGE);
+    await verifierPremiereOuverture(o);
+    await o.cliquer('#reglages .retour');
+    await o.attendreTexte('#liste-vide', 'Aucun devis');
+    assert.doesNotMatch(await o.evaluer('document.body.innerText'), /Marie Martin|123 456 789|Acme|Beta Studio|DEV-/);
+  } finally {
+    await autreNav.fermer();
+    fs.rmSync(profil, { recursive: true, force: true });
+  }
+});
+
+test('données du site effacées : réglages comme à la première ouverture, « prochain numéro » réglé à 23', async () => {
+  await onglet.envoyer('Storage.clearDataForOrigin', { origin: 'http://localhost:8000', storageTypes: 'all' });
+  onglet.dialogues.length = 0;
+  onglet.erreurs.length = 0;
+  await onglet.aller(URL_PAGE);
+  await verifierPremiereOuverture(onglet);
+
+  await onglet.taper('#prochain-numero', 'abc');
+  assert.equal(await onglet.texte('#prochain-apercu'), 'Un nombre entier, à partir de 1.');
+  await onglet.taper('#prochain-numero', '23');
+  assert.equal(await onglet.texte('#prochain-apercu'), `Prochain devis : ${num(23)}.`);
+  await onglet.taper(reglage('nom'), 'Marie Martin EI');
+  await onglet.taper(reglage('adresse'), '8 rue du Port\n44000 Nantes');
+  await onglet.taper(reglage('siret'), '123 456 789 00012');
+  await onglet.recharger();
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  assert.equal(await valeur(onglet, '#prochain-numero'), '23');
+
+  await onglet.cliquer('#reglages .retour');
+  await onglet.attendreTexte('#liste-vide', 'Aucun devis');
+  await onglet.cliquer('#nouveau-devis');
+  await onglet.attendreTexte('#devis-numero-barre', num(23));
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', num(23));
+  await onglet.cliquer('#ouvrir-reglages');
+  await onglet.attendreTexte('#prochain-apercu', num(24));
 });
