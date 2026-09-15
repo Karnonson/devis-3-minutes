@@ -4,7 +4,10 @@
   'use strict';
 
   const TITRE_PAGE = document.title;
+  // Valeurs de départ d'un nouveau devis, en attendant qu'elles viennent des réglages (tranche 05).
   const TAUX_TVA = 20;
+  const TAUX_POSSIBLES = [20, 10, 0];
+  const ACOMPTE = '30';
 
   const $ = (id) => document.getElementById(id);
   const ecrans = { liste: $('liste'), reglages: $('reglages'), devis: $('devis') };
@@ -192,7 +195,7 @@
         ['col-numero', null],
         [nom ? 'col-client' : 'col-client sans-client', nom || '(sans client)'],
         ['col-date', dateCourte(d.date)],
-        ['col-nombre', Calc.formatEuros(Calc.totaux(d.lignes || [], d.tva).ttc)],
+        ['col-nombre', Calc.formatEuros(Calc.totaux(d.lignes || [], d.tva, d.remise).ttc)],
         ['col-statut', null],
       ];
       cellules.forEach(([classe, texte]) => {
@@ -246,6 +249,8 @@
       emetteur: emetteur,
       lignes: [ligneVide()],
       tva: TAUX_TVA,
+      remise: '0',
+      acompte: ACOMPTE,
     };
     liste.push(d);
     ecrire(CLE_DEVIS, liste);
@@ -260,6 +265,13 @@
     $('client-nom').value = devis.client.nom;
     $('client-contact').value = devis.client.contact;
     $('client-adresse').value = devis.client.adresse;
+    // Devis créé avant la tranche 04 : valeurs de départ.
+    if (TAUX_POSSIBLES.indexOf(devis.tva) === -1) devis.tva = TAUX_TVA;
+    if (typeof devis.remise !== 'string') devis.remise = '0';
+    if (typeof devis.acompte !== 'string') devis.acompte = ACOMPTE;
+    document.querySelectorAll('#tva-choix input').forEach((el) => { el.checked = Number(el.value) === devis.tva; });
+    $('remise').value = devis.remise;
+    $('acompte').value = devis.acompte;
     $('devis-numero-barre').textContent = devis.numero;
     afficherEcran('devis');
     dessinerLignes();
@@ -343,6 +355,21 @@
     });
   });
 
+  $('tva-choix').addEventListener('change', (e) => {
+    devis.tva = Number(e.target.value);
+    enregistrer();
+    rafraichir();
+  });
+
+  // Remise et acompte : gardés tels que tapés ; hors de 0 à 100, la case est rouge et compte pour 0 %.
+  ['remise', 'acompte'].forEach((cle) => {
+    $(cle).addEventListener('input', (e) => {
+      devis[cle] = e.target.value;
+      enregistrer();
+      rafraichir();
+    });
+  });
+
   // ---- Aperçu ----
 
   function echapper(texte) {
@@ -350,8 +377,15 @@
   }
 
   function rafraichir() {
-    const t = Calc.totaux(devis.lignes, devis.tva);
+    const t = Calc.totaux(devis.lignes, devis.tva, devis.remise, devis.acompte);
     const euros = Calc.formatEuros;
+
+    ['remise', 'acompte'].forEach((cle) => {
+      const refuse = Calc.lirePourcentage(devis[cle]) === null;
+      $(cle).classList.toggle('invalide', refuse);
+      $(cle + '-aide').hidden = !refuse;
+      $(cle + '-aide').classList.toggle('erreur', refuse);
+    });
 
     // Totaux de ligne dans la saisie.
     listeLignes.querySelectorAll('.ligne').forEach((li, i) => {
@@ -391,6 +425,23 @@
       '</tr>'
     )).join('');
 
+    // Remise, TVA ou acompte à 0 % : leurs lignes disparaissent. TVA à 0 % : « Total » et mention art. 293 B.
+    const pct = (texte) => Calc.formatPourcentage(Calc.lirePourcentage(texte) || 0) + '&nbsp;%';
+    const franchise = devis.tva === 0;
+    const ligneTotal = (classe, libelle, montant) =>
+      '<tr' + (classe ? ' class="' + classe + '"' : '') + '><th>' + libelle + '</th><td>' + montant + '</td></tr>';
+    const totaux = [ligneTotal('', 'Total HT', euros(t.ht))];
+    if ((Calc.lirePourcentage(devis.remise) || 0) > 0) {
+      totaux.push(ligneTotal('f-remise', 'Remise ' + pct(devis.remise), '−' + euros(t.remise)));
+      totaux.push(ligneTotal('', 'Total HT après remise', euros(t.htApresRemise)));
+    }
+    if (!franchise) totaux.push(ligneTotal('', 'TVA ' + devis.tva + '&nbsp;%', euros(t.tva)));
+    totaux.push(ligneTotal('f-ttc', franchise ? 'Total' : 'Total TTC', euros(t.ttc)));
+    if ((Calc.lirePourcentage(devis.acompte) || 0) > 0) {
+      totaux.push(ligneTotal('f-acompte', 'Acompte à la commande (' + pct(devis.acompte) + ')', euros(t.acompte)));
+      totaux.push(ligneTotal('f-reste', 'Reste à payer', euros(t.reste)));
+    }
+
     feuille.innerHTML =
       '<header class="f-entete">' +
         '<div class="f-emetteur">' + emetteur + (legal ? '<div class="emetteur-legal">' + legal + '</div>' : '') + '</div>' +
@@ -411,11 +462,8 @@
         '</tr></thead>' +
         '<tbody>' + lignes + '</tbody>' +
       '</table>' +
-      '<table class="f-totaux">' +
-        '<tr><th>Total HT</th><td>' + euros(t.ht) + '</td></tr>' +
-        '<tr><th>TVA ' + devis.tva + '&nbsp;%</th><td>' + euros(t.tva) + '</td></tr>' +
-        '<tr class="f-ttc"><th>Total TTC</th><td>' + euros(t.ttc) + '</td></tr>' +
-      '</table>';
+      '<table class="f-totaux">' + totaux.join('') + '</table>' +
+      (franchise ? '<p class="f-mention-tva">TVA non applicable, art. 293 B du CGI</p>' : '');
   }
 
   // L'aperçu garde les proportions A4 et se réduit si la place manque.

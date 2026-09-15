@@ -336,3 +336,144 @@ test('données du site effacées : réglages comme à la première ouverture, «
   await onglet.cliquer('#ouvrir-reglages');
   await onglet.attendreTexte('#prochain-apercu', num(24));
 });
+
+// ---- Remise, TVA et acompte (tranche 04) ----
+
+// Les lignes des totaux telles qu'affichées sur l'aperçu : [libellé, montant].
+function totauxAffiches(o) {
+  return o.evaluer(`[...document.querySelectorAll('#feuille .f-totaux tr')]
+    .filter((tr) => tr.offsetParent !== null)
+    .map((tr) => [...tr.cells].map((c) => c.innerText.trim()))`)
+    .then((lignes) => lignes.map((l) => l.map(normal)));
+}
+
+// Écart en pixels entre le bord droit de chaque montant (et de la mention) et le bord droit du tableau des prestations.
+function ecartsADroite(o) {
+  return o.evaluer(`(() => {
+    const droite = document.querySelector('#feuille .f-tableau').getBoundingClientRect().right;
+    return [...document.querySelectorAll('#feuille .f-totaux td, #feuille .f-mention-tva')]
+      .filter((el) => el.offsetParent !== null)
+      .map((el) => { const r = document.createRange(); r.selectNodeContents(el);
+        return Math.round(droite - r.getBoundingClientRect().right); });
+  })()`);
+}
+
+const ligneSaisie = (n, champ) => `#lignes .ligne:nth-child(${n}) [data-champ="${champ}"]`;
+
+test('remise, TVA et acompte : l\'aperçu recalcule au centime, 2 × 450 + 3 × 450 donne 2 430,00 € et 1 701,00 €', async () => {
+  await onglet.cliquer('#reglages .retour');
+  await onglet.attendreTexte('#liste-lignes', num(23));
+  await onglet.cliquer('#nouveau-devis');
+  await onglet.attendreTexte('#devis-numero-barre', num(24));
+
+  // Nouveau devis : TVA 20 % choisie, remise 0 %, acompte 30 %.
+  assert.equal(await onglet.evaluer(`document.querySelector('#tva-choix input:checked').value`), '20');
+  assert.equal(await onglet.evaluer(`document.querySelectorAll('#tva-choix input[type="radio"]').length`), 3);
+  assert.equal(await valeur(onglet, '#remise'), '0');
+  assert.equal(await valeur(onglet, '#acompte'), '30');
+
+  await onglet.taper('#client-nom', 'Acme SARL');
+  await onglet.taper(ligneSaisie(1, 'titre'), 'Atelier de cadrage');
+  await onglet.taper(ligneSaisie(1, 'quantite'), '2');
+  await onglet.taper(ligneSaisie(1, 'prix'), '450');
+  await onglet.cliquer('#ajouter-ligne');
+  await onglet.taper(ligneSaisie(2, 'titre'), 'Ateliers de conception');
+  await onglet.taper(ligneSaisie(2, 'quantite'), '3');
+  await onglet.taper(ligneSaisie(2, 'prix'), '450');
+
+  // Sans remise : pas de ligne remise ni « Total HT après remise ».
+  assert.deepEqual(await totauxAffiches(onglet), [
+    ['Total HT', '2 250,00 €'],
+    ['TVA 20 %', '450,00 €'],
+    ['Total TTC', '2 700,00 €'],
+    ['Acompte à la commande (30 %)', '810,00 €'],
+    ['Reste à payer', '1 890,00 €'],
+  ]);
+
+  await onglet.taper('#remise', '10');
+  const reference = [
+    ['Total HT', '2 250,00 €'],
+    ['Remise 10 %', '−225,00 €'],
+    ['Total HT après remise', '2 025,00 €'],
+    ['TVA 20 %', '405,00 €'],
+    ['Total TTC', '2 430,00 €'],
+    ['Acompte à la commande (30 %)', '729,00 €'],
+    ['Reste à payer', '1 701,00 €'],
+  ];
+  assert.deepEqual(await totauxAffiches(onglet), reference);
+  assert.equal(await onglet.visible('#feuille .f-mention-tva'), false);
+
+  // Montants alignés à droite, à l'écran puis dans la mise en page d'impression.
+  for (const e of await ecartsADroite(onglet)) assert.ok(Math.abs(e) <= 1, 'aligné à droite (écart ' + e + ' px)');
+  await onglet.envoyer('Emulation.setEmulatedMedia', { media: 'print' });
+  try {
+    for (const e of await ecartsADroite(onglet)) assert.ok(Math.abs(e) <= 1, 'aligné à droite à l\'impression (écart ' + e + ' px)');
+  } finally {
+    await onglet.envoyer('Emulation.setEmulatedMedia', { media: '' });
+  }
+
+  // TVA 10 %.
+  await onglet.cliquer('#tva-choix input[value="10"] + span');
+  assert.deepEqual((await totauxAffiches(onglet)).slice(3), [
+    ['TVA 10 %', '202,50 €'],
+    ['Total TTC', '2 227,50 €'],
+    ['Acompte à la commande (30 %)', '668,25 €'],
+    ['Reste à payer', '1 559,25 €'],
+  ]);
+
+  // TVA 0 % : plus de ligne TVA, « Total », mention art. 293 B, acompte sur ce total.
+  await onglet.cliquer('#tva-choix input[value="0"] + span');
+  assert.deepEqual(await totauxAffiches(onglet), [
+    ['Total HT', '2 250,00 €'],
+    ['Remise 10 %', '−225,00 €'],
+    ['Total HT après remise', '2 025,00 €'],
+    ['Total', '2 025,00 €'],
+    ['Acompte à la commande (30 %)', '607,50 €'],
+    ['Reste à payer', '1 417,50 €'],
+  ]);
+  assert.equal(await onglet.texte('#feuille .f-mention-tva'), 'TVA non applicable, art. 293 B du CGI');
+  assert.doesNotMatch(await onglet.texte('#feuille .f-totaux'), /TVA|TTC/);
+  for (const e of await ecartsADroite(onglet)) assert.ok(Math.abs(e) <= 1, 'mention alignée à droite (écart ' + e + ' px)');
+
+  // Acompte à 0 % : les deux lignes disparaissent ; remise à 0 % : ses lignes aussi.
+  await onglet.cliquer('#tva-choix input[value="20"] + span');
+  await onglet.taper('#acompte', '0');
+  assert.deepEqual((await totauxAffiches(onglet)).map((l) => l[0]), ['Total HT', 'Remise 10 %', 'Total HT après remise', 'TVA 20 %', 'Total TTC']);
+  await onglet.taper('#remise', '0');
+  assert.deepEqual((await totauxAffiches(onglet)).map((l) => l[0]), ['Total HT', 'TVA 20 %', 'Total TTC']);
+
+  // Bornes de 0 à 100 : 150 et -5 sont entourés en rouge ; 100 et 12,5 acceptés.
+  const rouge = (sel) => onglet.evaluer(`getComputedStyle(document.querySelector('${sel}')).borderTopColor`).then((c) => c === 'rgb(180, 35, 24)');
+  for (const refuse of ['150', '-5', 'abc']) {
+    await onglet.taper('#remise', refuse);
+    assert.equal(await rouge('#remise'), true, 'remise ' + refuse + ' en rouge');
+    await onglet.taper('#acompte', refuse);
+    assert.equal(await rouge('#acompte'), true, 'acompte ' + refuse + ' en rouge');
+  }
+  await onglet.taper('#remise', '12,5');
+  await onglet.taper('#acompte', '100');
+  assert.equal(await rouge('#remise'), false);
+  assert.equal(await rouge('#acompte'), false);
+  assert.deepEqual(await totauxAffiches(onglet), [
+    ['Total HT', '2 250,00 €'],
+    ['Remise 12,5 %', '−281,25 €'],
+    ['Total HT après remise', '1 968,75 €'],
+    ['TVA 20 %', '393,75 €'],
+    ['Total TTC', '2 362,50 €'],
+    ['Acompte à la commande (100 %)', '2 362,50 €'],
+    ['Reste à payer', '0,00 €'],
+  ]);
+
+  // Retour à l'exemple de référence, gardé après rechargement et dans la liste.
+  await onglet.cliquer('#tva-choix input[value="20"] + span');
+  await onglet.taper('#remise', '10');
+  await onglet.taper('#acompte', '30');
+  await onglet.recharger();
+  await onglet.attendreTexte('#devis-numero-barre', num(24));
+  assert.equal(await onglet.evaluer(`document.querySelector('#tva-choix input:checked').value`), '20');
+  assert.deepEqual(await totauxAffiches(onglet), reference);
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', num(24));
+  assert.deepEqual((await lignesDeLaListe(onglet))[0], [num(24), 'Acme SARL', AUJOURDHUI, '2 430,00 €', 'Brouillon']);
+  assert.deepEqual(onglet.erreurs, []);
+});

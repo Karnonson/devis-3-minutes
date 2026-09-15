@@ -150,7 +150,7 @@ a.bouton { display: inline-block; text-decoration: none; }
 .aide.erreur { color: var(--rouge); }
 .champs-cote { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .champ-court { max-width: 160px; }
-.champ input.invalide { border-color: var(--rouge); }
+.champ input.invalide, .champ input.invalide:focus { border-color: var(--rouge); }
 .champ input.invalide:focus { box-shadow: 0 0 0 3px rgba(180, 35, 24, 0.12); }
 
 /* ---- Écran du devis ---- */
@@ -230,6 +230,28 @@ a.bouton { display: inline-block; text-decoration: none; }
 .total-ligne output { padding: 7px 0; font-weight: 600; text-align: right; white-space: nowrap; }
 .total-ligne > span { text-align: right; }
 
+.choix-segments {
+  display: inline-flex;
+  align-self: flex-start;
+  border: 1px solid var(--trait);
+  border-radius: var(--rayon);
+  background: var(--blanc);
+  overflow: hidden;
+}
+.choix-segments label { position: relative; }
+.choix-segments label + label { border-left: 1px solid var(--trait); }
+.choix-segments input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.choix-segments span {
+  display: block;
+  padding: 7px 16px;
+  cursor: pointer;
+  color: var(--nuit-doux);
+  font-variant-numeric: tabular-nums;
+}
+.choix-segments span:hover { color: var(--nuit); }
+.choix-segments input:checked + span { background: var(--nuit); color: var(--blanc); font-weight: 600; }
+.choix-segments input:focus-visible + span { outline: 2px solid var(--sapin); outline-offset: -2px; }
+
 /* ---- Aperçu A4 ---- */
 
 .apercu {
@@ -288,6 +310,10 @@ a.bouton { display: inline-block; text-decoration: none; }
 .f-totaux th { text-align: left; font-weight: 400; padding: 4px 24px 4px 0; }
 .f-totaux td { text-align: right; padding: 4px 0; white-space: nowrap; }
 .f-ttc th, .f-ttc td { font-weight: 600; font-size: 11pt; color: var(--sapin); border-top: 1px solid var(--nuit); padding-top: 8px; }
+.f-remise td { font-variant-numeric: tabular-nums; }
+.f-acompte th, .f-acompte td { padding-top: 12px; }
+.f-reste th, .f-reste td { font-weight: 600; }
+.f-mention-tva { margin: 3mm 0 0 auto !important; text-align: right; font-size: 8.5pt; color: var(--nuit-doux); }
 
 /* ---- Impression : seule la feuille sort, identique à l'aperçu ---- */
 

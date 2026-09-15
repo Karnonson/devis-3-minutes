@@ -111,14 +111,27 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 **À construire :** sur l'écran du devis, le consultant choisit la TVA (20, 10 ou 0 %), tape une remise et un acompte en pourcentage, et voit l'aperçu recalculer au centime la remise, le HT après remise, la TVA, le TTC, l'acompte et le reste à payer. Les nouveaux devis partent à 20 % de TVA et 30 % d'acompte en attendant que la tranche 05 les prenne dans les réglages.
 **Bloqué par :** 01.
 **Fait quand :**
-- [ ] Un seul taux de TVA se choisit pour tout le devis, parmi 20 %, 10 % et 0 %. *(story 32)*
-- [ ] À 0 % : plus de ligne TVA, « Total » au lieu de « Total TTC », mention « TVA non applicable, art. 293 B du CGI » sous les totaux, acompte calculé sur ce total. *(story 33)*
-- [ ] La remise se tape en pourcentage de 0 à 100 et s'applique au HT avant la TVA. *(story 34)*
-- [ ] Avec une remise, l'aperçu montre le pourcentage, son montant et « Total HT après remise » ; à 0 %, ces lignes disparaissent. *(story 35)*
-- [ ] L'acompte se tape en pourcentage de 0 à 100 du TTC après remise. *(story 36)*
-- [ ] Sous les totaux : « Acompte à la commande (30 %) » avec son montant, puis « Reste à payer » ; à 0 %, les deux lignes disparaissent. *(story 37)*
-- [ ] 2 × 450 + 3 × 450, remise 10 %, TVA 20 %, acompte 30 % donnent un TTC de 2 430,00 € et un reste à payer de 1 701,00 €, à l'écran comme dans les tests de calcul lancés par `node --test`, qui couvrent aussi 10 %, 0 %, les quantités décimales et les demi-centimes. *(story 38)*
-- [ ] Les totaux sont alignés à droite sur l'aperçu et le PDF, acompte et reste à payer compris. *(story 68)*
+- [x] Un seul taux de TVA se choisit pour tout le devis, parmi 20 %, 10 % et 0 %. *(story 32)*
+- [x] À 0 % : plus de ligne TVA, « Total » au lieu de « Total TTC », mention « TVA non applicable, art. 293 B du CGI » sous les totaux, acompte calculé sur ce total. *(story 33)*
+- [x] La remise se tape en pourcentage de 0 à 100 et s'applique au HT avant la TVA. *(story 34)*
+- [x] Avec une remise, l'aperçu montre le pourcentage, son montant et « Total HT après remise » ; à 0 %, ces lignes disparaissent. *(story 35)*
+- [x] L'acompte se tape en pourcentage de 0 à 100 du TTC après remise. *(story 36)*
+- [x] Sous les totaux : « Acompte à la commande (30 %) » avec son montant, puis « Reste à payer » ; à 0 %, les deux lignes disparaissent. *(story 37)*
+- [x] 2 × 450 + 3 × 450, remise 10 %, TVA 20 %, acompte 30 % donnent un TTC de 2 430,00 € et un reste à payer de 1 701,00 €, à l'écran comme dans les tests de calcul lancés par `node --test`, qui couvrent aussi 10 %, 0 %, les quantités décimales et les demi-centimes. *(story 38)*
+- [x] Les totaux sont alignés à droite sur l'aperçu et le PDF, acompte et reste à payer compris. *(story 68)*
+
+**Choisi :**
+- La TVA se choisit sur trois boutons côte à côte « 20 % | 10 % | 0 % » dans un bloc « TVA, remise et acompte » sous les prestations ; le taux choisi est en bleu nuit, pour laisser le vert sapin au seul bouton « Sortir le PDF ».
+- Remise et acompte se tapent dans deux cases « Remise (%) » et « Acompte (%) », décimales à deux chiffres acceptées (« 12,5 »). Gardées telles que tapées, comme les quantités : hors de 0 à 100 ou illisible, la case est entourée en rouge avec « Un pourcentage de 0 à 100. » et compte pour 0 % ; une case vide compte pour 0 % sans rouge.
+- Les lignes de remise et d'acompte disparaissent selon le pourcentage tapé (0 %), pas selon le montant : sur un devis encore sans prix, « Remise 10 % −0,00 € » reste visible.
+- Sur l'aperçu : « Remise 10 % » avec son montant précédé d'un signe moins (« −225,00 € »), puis « Total HT après remise » ; « Acompte à la commande (30 %) » et « Reste à payer » (en demi-gras) sous le total, un peu détachés ; la mention « TVA non applicable, art. 293 B du CGI » en petit, alignée à droite, sous tout le bloc des totaux (voir `a-trancher.md`).
+- Un devis créé avant cette tranche s'ouvre à 0 % de remise et 30 % d'acompte ; son total dans la liste ne change pas.
+- Le total TTC de la liste tient compte de la remise.
+- Une case refusée restait bordée de vert tant que le curseur y était (réglages compris) : elle est maintenant rouge même sous le curseur.
+- Le contrôle automatique de la page rejoue l'exemple de référence, 10 %, 0 %, acompte et remise à 0 %, les bornes, le rechargement et la liste, et mesure l'alignement à droite des montants à l'écran et dans la mise en page d'impression de Chrome.
+
+**Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 20 s).
+**Fichiers :** `calc.js`, `app.js`, `index.html`, `styles.css`, `tests/calc.test.js`, `tests/page.js`, `builds/01-devis-3-minutes/a-trancher.md`, `builds/01-devis-3-minutes/captures/04-depart.png`, `04-remise-tva-acompte.png`, `04-tva-0.png`, `04-sans-remise-ni-acompte.png`, `04-remise-refusee.png`, `04-pdf.png`.
 
 ## 05 — Dates, validité, conditions et « Bon pour accord »
 

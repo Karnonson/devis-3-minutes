@@ -140,6 +140,30 @@
           <ol class="lignes" id="lignes"></ol>
           <button type="button" class="bouton secondaire" id="ajouter-ligne">Ajouter une ligne</button>
         </fieldset>
+
+        <fieldset class="bloc">
+          <legend>TVA, remise et acompte</legend>
+          <div class="champ">
+            <span id="tva-libelle">TVA</span>
+            <div class="choix-segments" id="tva-choix" role="radiogroup" aria-labelledby="tva-libelle">
+              <label><input type="radio" name="tva" value="20"><span>20&nbsp;%</span></label>
+              <label><input type="radio" name="tva" value="10"><span>10&nbsp;%</span></label>
+              <label><input type="radio" name="tva" value="0"><span>0&nbsp;%</span></label>
+            </div>
+          </div>
+          <div class="champs-cote">
+            <label class="champ">
+              <span>Remise (%) <em>sur le HT</em></span>
+              <input type="text" inputmode="decimal" id="remise" placeholder="0">
+              <small class="aide" id="remise-aide" hidden>Un pourcentage de 0 à 100.</small>
+            </label>
+            <label class="champ">
+              <span>Acompte (%) <em>du TTC</em></span>
+              <input type="text" inputmode="decimal" id="acompte" placeholder="0">
+              <small class="aide" id="acompte-aide" hidden>Un pourcentage de 0 à 100.</small>
+            </label>
+          </div>
+        </fieldset>
       </form>
 
       <div class="apercu" id="apercu-zone">
