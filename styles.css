@@ -25,6 +25,11 @@
   --sapin: #1d5c3f;
   --sapin-fonce: #154a32;
   --rouge: #b42318;
+  /* « à relire » : ambre, distinct du rouge des erreurs */
+  --ambre: #8a5a00;
+  --ambre-vif: #c98a14;
+  --ambre-trait: #e9d29c;
+  --ambre-pale: #fdf6e4;
   --rayon: 6px;
 }
 
@@ -146,7 +151,7 @@ a.bouton { display: inline-block; text-decoration: none; }
 .statut-refuse { background-color: var(--blanc); color: var(--nuit-doux); border-color: var(--trait); }
 
 .liste-devis .col-actions { text-align: right; padding-left: 0; }
-.supprimer-devis {
+.action-devis {
   border: 0;
   padding: 2px 0;
   background: none;
@@ -154,8 +159,12 @@ a.bouton { display: inline-block; text-decoration: none; }
   font-size: 13px;
   cursor: pointer;
 }
-.supprimer-devis:hover { color: var(--rouge); text-decoration: underline; text-underline-offset: 2px; }
-.supprimer-devis:focus-visible { outline: 2px solid var(--sapin); outline-offset: 2px; border-radius: 2px; }
+.action-devis + .action-devis { margin-left: 14px; }
+.action-devis:hover { text-decoration: underline; text-underline-offset: 2px; }
+.dupliquer-devis { color: var(--nuit-doux); }
+.dupliquer-devis:hover { color: var(--sapin); }
+.supprimer-devis:hover { color: var(--rouge); }
+.action-devis:focus-visible { outline: 2px solid var(--sapin); outline-offset: 2px; border-radius: 2px; }
 
 .visuellement-cache { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
@@ -216,6 +225,66 @@ a.bouton { display: inline-block; text-decoration: none; }
 .manques button:hover { color: var(--rouge); text-decoration-color: var(--rouge); }
 .manques button:focus-visible { outline: 2px solid var(--sapin); outline-offset: 2px; border-radius: 2px; }
 .ligne-aide { margin: -4px 0 10px; }
+
+/* Lignes copiées « à relire » : teinte ambre pâle, distincte du rouge des erreurs, jusqu'à relecture. */
+.ligne.a-relire { background: var(--ambre-pale); border-color: var(--ambre-trait); box-shadow: inset 3px 0 0 var(--ambre-vif); }
+.ligne:not(.a-relire) .relire-seul { display: none; }
+.ligne-repere { display: flex; align-items: center; gap: 8px; }
+.relire-marque {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ambre);
+  background: #f7e6bb;
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.relire-coche {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: 6px;
+  padding: 0 8px;
+  height: 28px;
+  border: 1px solid var(--ambre-trait);
+  border-radius: var(--rayon);
+  background: var(--blanc);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--nuit);
+  cursor: pointer;
+}
+.relire-coche:hover { border-color: var(--ambre); }
+.relire-coche input { margin: 0; accent-color: var(--sapin); cursor: pointer; }
+.relire-coche:has(input:focus-visible) { outline: 2px solid var(--sapin); outline-offset: 2px; }
+
+/* PDF sorti avec des lignes encore « à relire » : rappel en haut de la saisie, qui ne bloque rien. */
+.rappel {
+  background: var(--blanc);
+  border: 1px solid var(--ambre-trait);
+  border-left: 3px solid var(--ambre-vif);
+  border-radius: var(--rayon);
+  padding: 12px 16px;
+  margin-bottom: 20px;
+}
+.rappel p { margin: 0; }
+.rappel-titre { font-weight: 600; color: var(--ambre); }
+.rappel-texte { font-size: 12px; color: var(--nuit-doux); margin: 2px 0 6px !important; }
+.rappel ul { margin: 0; padding-left: 18px; }
+.rappel li { margin: 2px 0; }
+.rappel li::marker { color: var(--ambre-vif); }
+.rappel button {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--nuit);
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--nuit-pale);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.rappel button:hover { color: var(--ambre); text-decoration-color: var(--ambre); }
+.rappel button:focus-visible { outline: 2px solid var(--sapin); outline-offset: 2px; border-radius: 2px; }
 
 /* ---- Écran du devis ---- */
 

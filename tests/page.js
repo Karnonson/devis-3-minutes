@@ -1017,3 +1017,227 @@ test('deux onglets : un devis supprimé dans l\'un ramène l\'autre à la liste 
     await autre.fermer();
   }
 });
+
+// ---- Dupliquer un devis, lignes « à relire » (tranche 09) ----
+
+const ligneListeDupliquer = (n) => `${ligneListe(n)} .dupliquer-devis`;
+// Pour chaque ligne de la saisie : le repère « À relire » est-il affiché ?
+const marquesARelire = (o) => o.evaluer(`[...document.querySelectorAll('#lignes .ligne')]
+  .map((li) => { const m = li.querySelector('.relire-marque'); return !!m && m.offsetParent !== null && m.innerText.trim() === 'À relire'; })`);
+// Pour chaque ligne de la saisie : son fond est-il teinté (autre que blanc) ?
+const fondsTeintes = (o) => o.evaluer(`[...document.querySelectorAll('#lignes .ligne')]
+  .map((li) => getComputedStyle(li).backgroundColor !== 'rgb(255, 255, 255)')`);
+// Rappel « à relire » au PDF, tel qu'affiché : null s'il est caché.
+const rappelAffiche = (o) => o.evaluer(`(() => { const p = document.querySelector('#rappel');
+  return p.offsetParent === null ? null : { titre: p.querySelector('.rappel-titre').innerText.trim(),
+    lignes: [...p.querySelectorAll('li')].map((li) => li.innerText.trim()) }; })()`);
+// Ce que la saisie montre d'une ligne : [titre, détail, quantité, prix].
+const saisieDesLignes = (o) => o.evaluer(`[...document.querySelectorAll('#lignes .ligne')]
+  .map((li) => ['titre', 'detail', 'quantite', 'prix'].map((c) => li.querySelector('[data-champ="' + c + '"]').value))`);
+
+let origine = null;
+
+test('tant que le nom, l\'adresse ou le SIRET manquent, « Dupliquer » renvoie vers les réglages', async () => {
+  // Un devis d'origine complet, pour Karma SAS, envoyé.
+  onglet.dialogues.length = 0;
+  await onglet.cliquer(`${ligneListe(5)} a`);
+  await onglet.attendreTexte('#devis-numero-barre', num(5));
+  await onglet.taper('#client-nom', 'Karma SAS');
+  await onglet.taper('#client-contact', 'Paul Durand');
+  await onglet.taper('#client-adresse', '1 rue Oberkampf\n75011 Paris');
+  await onglet.taper(ligneSaisie(1, 'titre'), 'Atelier de cadrage');
+  await onglet.taper(ligneSaisie(1, 'detail'), 'Une journée avec l\'équipe produit.');
+  await onglet.taper(ligneSaisie(1, 'quantite'), '2');
+  await onglet.taper(ligneSaisie(1, 'prix'), '450');
+  await onglet.cliquer('#ajouter-ligne');
+  await onglet.taper(ligneSaisie(2, 'titre'), 'Maquettes');
+  await onglet.taper(ligneSaisie(2, 'detail'), 'Trois écrans clés.');
+  await onglet.taper(ligneSaisie(2, 'quantite'), '3');
+  await onglet.taper(ligneSaisie(2, 'prix'), '450');
+  await onglet.cliquer('#ajouter-ligne');
+  await onglet.taper(ligneSaisie(3, 'titre'), 'Suivi');
+  await onglet.taper(ligneSaisie(3, 'quantite'), '0,5');
+  await onglet.taper(ligneSaisie(3, 'prix'), '900');
+  await onglet.cliquer('#tva-choix input[value="20"] + span');
+  await onglet.taper('#remise', '10');
+  await onglet.taper('#acompte', '30');
+  await onglet.taper('#validite', '15');
+  await onglet.taper('#conditions', 'Conditions négociées avec ce client.');
+  await onglet.choisir('#devis-statut', 'Envoyé');
+  origine = { lignes: await saisieDesLignes(onglet), totaux: await totauxAffiches(onglet) };
+  assert.deepEqual(await marquesARelire(onglet), [false, false, false], 'un devis tapé n\'a rien à relire');
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', 'Karma SAS');
+
+  // Réglages changés depuis : coordonnées, conditions et validité par défaut.
+  await onglet.cliquer('#ouvrir-reglages');
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  await onglet.taper(reglage('nom'), 'Marie Martin EI');
+  await onglet.taper(reglage('conditions'), 'Acompte à la commande.\nSolde à 30 jours.');
+  await onglet.taper(reglage('validite'), '20');
+  await onglet.taper(reglage('siret'), '');
+  await onglet.cliquer('#reglages .retour');
+  await onglet.attendreTexte('#liste-lignes', 'Karma SAS');
+  const listeAvant = await lignesDeLaListe(onglet);
+  assert.equal(await onglet.texte(ligneListeDupliquer(5)), 'Dupliquer');
+
+  await onglet.cliquer(ligneListeDupliquer(5));
+  await onglet.attendreTexte('#reglages .titre-ecran', 'Réglages');
+  assert.equal(await onglet.evaluer('document.activeElement.dataset.reglage || null'), 'siret');
+  assert.equal(await onglet.visible('#devis'), false);
+
+  // Aucune copie ni numéro consommé par le renvoi.
+  await onglet.taper(reglage('siret'), '123 456 789 00012');
+  assert.equal(await onglet.texte('#prochain-apercu'), `Prochain devis : ${num(6)}.`);
+  await onglet.cliquer('#reglages .retour');
+  await onglet.attendreTexte('#liste-lignes', 'Karma SAS');
+  assert.deepEqual(await lignesDeLaListe(onglet), listeAvant);
+  assert.deepEqual(onglet.dialogues, []);
+  assert.deepEqual(onglet.erreurs, []);
+});
+
+test('« Dupliquer » ouvre aussitôt la copie : nouveau numéro, brouillon du jour, client vide, lignes teintées « à relire »', async () => {
+  onglet.dialogues.length = 0;
+  await onglet.cliquer(ligneListeDupliquer(5));
+  await onglet.attendreTexte('#devis-numero-barre', num(6));
+  assert.equal(await onglet.visible('#devis'), true);
+  assert.equal(await onglet.visible('#liste'), false);
+  assert.equal(await onglet.evaluer('location.hash'), '#' + num(6));
+
+  // Nouveau numéro, brouillon, date du jour, validité par défaut des réglages (20 jours, pas les 15 de l'origine).
+  assert.equal(await statutDuDevis(onglet), 'Brouillon');
+  assert.equal(await valeur(onglet, '#devis-date'), jourPlus(0)[1]);
+  assert.equal(await valeur(onglet, '#validite'), '20');
+  assert.equal(normal(await onglet.texte('#feuille .f-document')).replace(/\n+/g, '\n'),
+    `DEVIS\n${num(6)}\nDate : ${AUJOURDHUI}\nValable jusqu'au ${jourPlus(20)[0]}`);
+
+  // Bloc client vide ; lignes, prix, TVA, remise et acompte gardés.
+  for (const sel of ['#client-nom', '#client-contact', '#client-adresse']) assert.equal(await valeur(onglet, sel), '', sel + ' vide');
+  assert.equal(normal(await onglet.texte('#feuille .f-client')).trim(), 'CLIENT');
+  assert.deepEqual(await saisieDesLignes(onglet), origine.lignes);
+  assert.equal(await onglet.evaluer(`document.querySelector('#tva-choix input:checked').value`), '20');
+  assert.equal(await valeur(onglet, '#remise'), '10');
+  assert.equal(await valeur(onglet, '#acompte'), '30');
+  assert.deepEqual(await totauxAffiches(onglet), origine.totaux);
+
+  // Coordonnées et conditions des réglages actuels.
+  assert.match(normal(await onglet.texte('#feuille .f-emetteur')), /^Marie Martin EI\n/);
+  assert.equal(await valeur(onglet, '#conditions'), 'Acompte à la commande.\nSolde à 30 jours.');
+
+  // Chaque ligne copiée est teintée et marquée « À relire » ; l'aperçu (le PDF) n'en montre rien.
+  assert.deepEqual(await marquesARelire(onglet), [true, true, true]);
+  assert.deepEqual(await fondsTeintes(onglet), [true, true, true]);
+  assert.doesNotMatch(await onglet.texte('#feuille'), /relire/i);
+  assert.deepEqual(onglet.dialogues, []);
+
+  // Dans la liste : la copie en haut, sans client, en brouillon ; l'origine n'a pas bougé.
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', num(6));
+  const lignes = await lignesDeLaListe(onglet);
+  assert.deepEqual(lignes[0], [num(6), '(sans client)', AUJOURDHUI, origine.totaux.find((t) => t[0] === 'Total TTC')[1], 'Brouillon']);
+  assert.deepEqual(lignes[1].slice(0, 2).concat(lignes[1][4]), [num(5), 'Karma SAS', 'Envoyé']);
+  await onglet.cliquer(`${ligneListe(5)} a`);
+  await onglet.attendreTexte('#devis-numero-barre', num(5));
+  assert.equal(await valeur(onglet, '#client-nom'), 'Karma SAS');
+  assert.equal(await valeur(onglet, '#validite'), '15');
+  assert.equal(await valeur(onglet, '#conditions'), 'Conditions négociées avec ce client.');
+  assert.deepEqual(await marquesARelire(onglet), [false, false, false]);
+  assert.match(normal(await onglet.texte('#feuille .f-emetteur')), /^Marie Martin Conseil EI\n/);
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', num(6));
+  assert.deepEqual(onglet.erreurs, []);
+});
+
+test('ligne cochée d\'un clic ou modifiée : plus « à relire » ; le repère reste après rechargement et après Chrome fermé et rouvert', async () => {
+  onglet.dialogues.length = 0;
+  await onglet.cliquer(`${ligneListe(6)} a`);
+  await onglet.attendreTexte('#devis-numero-barre', num(6));
+
+  // Cochée d'un clic.
+  await onglet.cliquer('#lignes .ligne:nth-child(1) .relire-coche');
+  await attendre(async () => (await marquesARelire(onglet))[0] === false, 'ligne 1 cochée');
+  assert.deepEqual(await marquesARelire(onglet), [false, true, true]);
+  assert.deepEqual(await fondsTeintes(onglet), [false, true, true]);
+
+  // Modifiée : le détail réécrit.
+  await onglet.taper(ligneSaisie(2, 'detail'), 'Trois écrans pour le nouveau site.');
+  assert.deepEqual(await marquesARelire(onglet), [false, false, true]);
+  assert.deepEqual(await fondsTeintes(onglet), [false, false, true]);
+
+  // Déplacée, la ligne garde son repère ; une ligne ajoutée n'est pas à relire.
+  await onglet.cliquer('#lignes .ligne:nth-child(3) [data-action="monter"]');
+  assert.deepEqual(await marquesARelire(onglet), [false, true, false]);
+  await onglet.cliquer('#lignes .ligne:nth-child(2) [data-action="descendre"]');
+  assert.deepEqual(await marquesARelire(onglet), [false, false, true]);
+  await onglet.cliquer('#ajouter-ligne');
+  assert.deepEqual(await marquesARelire(onglet), [false, false, true, false]);
+  await onglet.cliquer('#lignes .ligne:nth-child(4) [data-action="supprimer"]');
+  await attendre(() => onglet.evaluer('document.querySelectorAll("#lignes .ligne").length === 3'), 'ligne ajoutée supprimée');
+
+  await onglet.recharger();
+  await onglet.attendreTexte('#devis-numero-barre', num(6));
+  assert.deepEqual(await marquesARelire(onglet), [false, false, true]);
+  assert.equal(await valeur(onglet, ligneSaisie(2, 'detail')), 'Trois écrans pour le nouveau site.');
+
+  // Page fermée (Chrome quitté) puis rouverte le lendemain.
+  await nav.fermer();
+  nav = await lancerChrome(PROFIL);
+  onglet = await nav.onglet();
+  await poserTemoinImpression(onglet);
+  await onglet.aller(URL_PAGE);
+  await onglet.attendreTexte('#liste-lignes', num(6));
+  await onglet.cliquer(`${ligneListe(6)} .col-client`);
+  await onglet.attendreTexte('#devis-numero-barre', num(6));
+  assert.deepEqual(await marquesARelire(onglet), [false, false, true]);
+  assert.deepEqual(await fondsTeintes(onglet), [false, false, true]);
+  assert.deepEqual(onglet.erreurs, []);
+});
+
+test('« Sortir le PDF » avec des lignes encore à relire : la page le signale et le PDF sort quand même', async () => {
+  // Adresse oubliée : refus, sans rappel « à relire » ni impression.
+  await onglet.taper('#client-nom', 'Studio Lune');
+  await onglet.cliquer('#sortir-pdf');
+  await onglet.attendreTexte('#manques', 'Le PDF n\'est pas sorti');
+  assert.deepEqual(await manquesAffiches(onglet), ['Adresse du client']);
+  assert.equal(await rappelAffiche(onglet), null);
+  assert.deepEqual(await impressions(onglet), []);
+
+  // Adresse remplie : le PDF sort, et la page signale la ligne encore à relire.
+  await onglet.taper('#client-adresse', '3 place du Marché\n35000 Rennes');
+  await onglet.cliquer('#sortir-pdf');
+  await attendre(async () => (await impressions(onglet)).length === 1, 'impression malgré la ligne à relire');
+  assert.deepEqual(await impressions(onglet), [`${num(6)} - Studio Lune`]);
+  assert.deepEqual(await rappelAffiche(onglet), { titre: '1 ligne encore à relire', lignes: ['Ligne 3 : Suivi'] });
+  assert.deepEqual(await manquesAffiches(onglet), []);
+
+  // Un clic sur la ligne signalée y met le curseur ; cochée, le rappel disparaît.
+  await onglet.cliquer('#rappel li:nth-child(1) button');
+  assert.equal(await onglet.evaluer('document.activeElement.closest(".ligne") && document.activeElement.closest(".ligne").dataset.rang'), '2');
+  await onglet.cliquer('#lignes .ligne:nth-child(3) .relire-coche');
+  await attendre(async () => (await rappelAffiche(onglet)) === null, 'rappel retiré');
+
+  // Plus rien à relire : le PDF sort sans rappel. Plusieurs lignes à relire : le rappel les compte.
+  await onglet.cliquer('#sortir-pdf');
+  await attendre(async () => (await impressions(onglet)).length === 2, 'seconde impression');
+  assert.equal(await rappelAffiche(onglet), null);
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', 'Studio Lune');
+  assert.deepEqual((await lignesDeLaListe(onglet))[0].slice(0, 2).concat((await lignesDeLaListe(onglet))[0][4]), [num(6), 'Studio Lune', 'Brouillon']);
+
+  await onglet.cliquer(ligneListeDupliquer(6));
+  await onglet.attendreTexte('#devis-numero-barre', num(7));
+  await onglet.taper('#client-nom', 'Atelier Soleil');
+  await onglet.taper('#client-adresse', '5 quai des Chartrons\n33000 Bordeaux');
+  await onglet.cliquer('#sortir-pdf');
+  await attendre(async () => (await impressions(onglet)).length === 3, 'troisième impression');
+  assert.deepEqual(await rappelAffiche(onglet), { titre: '3 lignes encore à relire',
+    lignes: ['Ligne 1 : Atelier de cadrage', 'Ligne 2 : Maquettes', 'Ligne 3 : Suivi'] });
+  // Rouvert, le devis ne montre plus le rappel tant qu'on n'a pas redemandé le PDF.
+  await onglet.cliquer('#retour-liste');
+  await onglet.cliquer(`${ligneListe(7)} a`);
+  await onglet.attendreTexte('#devis-numero-barre', num(7));
+  assert.equal(await rappelAffiche(onglet), null);
+  assert.deepEqual(await marquesARelire(onglet), [true, true, true]);
+  assert.deepEqual(onglet.dialogues, []);
+  assert.deepEqual(onglet.erreurs, []);
+});

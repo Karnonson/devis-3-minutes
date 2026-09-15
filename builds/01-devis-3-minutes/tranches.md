@@ -239,14 +239,23 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 **À construire :** « Dupliquer » sur une ligne de la liste ouvre aussitôt une copie sous un nouveau numéro, client vidé, lignes teintées « à relire » ; au PDF, la page prévient des lignes encore à relire sans bloquer.
 **Bloqué par :** 05, 06.
 **Fait quand :**
-- [ ] Tant que le nom, l'adresse ou le SIRET manquent dans les réglages, « Dupliquer » renvoie vers les réglages. *(story 3)*
-- [ ] La copie reçoit un nouveau numéro, en brouillon, datée du jour, avec la validité par défaut des réglages. *(story 47)*
-- [ ] La copie a un bloc client vide, garde lignes, prix, TVA, remise et acompte, et prend coordonnées et conditions des réglages actuels. *(story 48)*
-- [ ] La copie s'ouvre directement après le clic. *(story 49)*
-- [ ] Chaque ligne copiée est teintée « à relire » jusqu'à ce qu'on la modifie ou la coche d'un clic. *(story 50)*
-- [ ] Le repère « à relire » est encore là après fermeture et réouverture de la page. *(story 51)*
-- [ ] Au PDF, s'il reste des lignes à relire, la page le signale et le PDF sort quand même. *(story 57)*
-- [ ] Le contrôle automatique de la page rejoue une duplication, une ligne cochée, une ligne modifiée et le rappel au PDF.
+- [x] Tant que le nom, l'adresse ou le SIRET manquent dans les réglages, « Dupliquer » renvoie vers les réglages. *(story 3)*
+- [x] La copie reçoit un nouveau numéro, en brouillon, datée du jour, avec la validité par défaut des réglages. *(story 47)*
+- [x] La copie a un bloc client vide, garde lignes, prix, TVA, remise et acompte, et prend coordonnées et conditions des réglages actuels. *(story 48)*
+- [x] La copie s'ouvre directement après le clic. *(story 49)*
+- [x] Chaque ligne copiée est teintée « à relire » jusqu'à ce qu'on la modifie ou la coche d'un clic. *(story 50)*
+- [x] Le repère « à relire » est encore là après fermeture et réouverture de la page. *(story 51)*
+- [x] Au PDF, s'il reste des lignes à relire, la page le signale et le PDF sort quand même. *(story 57)*
+- [x] Le contrôle automatique de la page rejoue une duplication, une ligne cochée, une ligne modifiée et le rappel au PDF.
+
+**Choisi :**
+- « Dupliquer » est un lien discret en bout de chaque ligne de la liste, avant « Supprimer », vert sapin au survol ; seulement dans la liste, comme le dit la tranche. La copie reprend le numéro suivant comme « Nouveau devis » (numéros supprimés sautés) et s'ouvre aussitôt ; l'origine ne change pas, statut compris.
+- Le repère « à relire » vit dans la saisie seulement : fond ambre pâle, filet ambre à gauche, pastille « À relire » à côté de « Ligne n » et case « Relue » à côté des flèches (voir `a-trancher.md`). L'aperçu et le PDF n'en montrent rien. Cocher « Relue » ou taper dans le titre, le détail, la quantité ou le prix d'une ligne retire le repère ; la déplacer le garde ; une ligne ajoutée n'en a pas. Le repère est enregistré sur la ligne, dans le devis.
+- Au PDF, un manque passe d'abord : refus comme avant, sans rappel. Sinon, s'il reste des lignes à relire, un encadré ambre s'affiche en haut de la saisie (« 1 ligne encore à relire », « Le PDF sort quand même. Relisez avant d'envoyer, puis cochez « Relue ». », puis « Ligne 3 : Suivi », un clic y met le curseur), puis la fenêtre d'impression s'ouvre juste après l'affichage de l'encadré (voir `a-trancher.md`). L'encadré suit la relecture, disparaît quand plus rien n'est à relire et ne revient pas en rouvrant le devis tant qu'on n'a pas redemandé le PDF.
+- Le contrôle automatique rejoue : SIRET effacé puis « Dupliquer » renvoyé vers les réglages sans numéro consommé ; copie d'un devis « Envoyé » de Karma SAS après des réglages changés (nom, conditions, validité 20 jours) ; une ligne cochée, une modifiée, une déplacée et une ajoutée ; rechargement puis Chrome quitté et relancé ; adresse oubliée refusée sans rappel ; PDF sorti avec le rappel d'une ligne, puis de trois sur une copie de copie.
+
+**Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 35 s). Contrôle automatique du PDF : `node --test tests/pdf.js` (environ 45 s, demande `pdftotext`).
+**Fichiers :** `index.html`, `styles.css`, `app.js`, `tests/page.js`, `builds/01-devis-3-minutes/a-trancher.md`, `builds/01-devis-3-minutes/captures/09-liste-dupliquer.png`, `09-renvoi-reglages.png`, `09-copie-a-relire.png`, `09-ligne-cochee-modifiee.png`, `09-pdf-rappel.png`.
 
 ## 10 — Le nom de l'ancien client signalé, et la soirée du 6 octobre en entier
 

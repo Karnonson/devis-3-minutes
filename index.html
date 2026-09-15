@@ -153,6 +153,11 @@
           <p class="manques-titre">Le PDF n'est pas sorti. À compléter :</p>
           <ul id="manques-liste"></ul>
         </div>
+        <div class="rappel" id="rappel" role="status" hidden>
+          <p class="rappel-titre" id="rappel-titre"></p>
+          <p class="rappel-texte">Le PDF sort quand même. Relisez avant d'envoyer, puis cochez « Relue ».</p>
+          <ul id="rappel-liste"></ul>
+        </div>
 
         <fieldset class="bloc">
           <legend>Client</legend>
@@ -229,8 +234,12 @@
   <template id="modele-ligne">
     <li class="ligne">
       <div class="ligne-tete">
-        <span class="ligne-rang"></span>
+        <div class="ligne-repere">
+          <span class="ligne-rang"></span>
+          <span class="relire-marque relire-seul">À relire</span>
+        </div>
         <div class="ligne-outils">
+          <label class="relire-coche relire-seul" title="Cocher quand la ligne est relue"><input type="checkbox" data-action="relue"> Relue</label>
           <button type="button" class="icone" data-action="monter" aria-label="Monter la ligne" title="Monter">↑</button>
           <button type="button" class="icone" data-action="descendre" aria-label="Descendre la ligne" title="Descendre">↓</button>
           <button type="button" class="icone danger" data-action="supprimer" aria-label="Supprimer la ligne" title="Supprimer">✕</button>

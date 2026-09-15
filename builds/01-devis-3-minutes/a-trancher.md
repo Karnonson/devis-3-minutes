@@ -48,3 +48,23 @@
 - Toutes les pastilles grises, seul le mot change.
 **En attendant :** les pastilles restent dans les tons bleu nuit, pour garder le vert sapin aux boutons et au total TTC comme le dit **Apparence** (capture `captures/08-liste-statuts.png`). Changer les couleurs ne touche que quatre lignes de `styles.css`.
 **Réponse :**
+
+## 09 — Allure des lignes « à relire »
+
+**Question :** comment voulez-vous voir, dans la saisie, les lignes copiées qui restent à relire ?
+**Choix :**
+- Fond ambre pâle, filet ambre à gauche, pastille « À relire » et case « Relue » sur la ligne.
+- Même chose en bleu pâle, dans les tons bleu nuit de la page.
+- Fond blanc, seulement la pastille « À relire » et la case « Relue ».
+**En attendant :** fond ambre pâle, distinct du rouge des erreurs et du vert sapin des boutons (capture `captures/09-copie-a-relire.png`). Changer la teinte ne touche que quelques lignes de `styles.css`.
+**Réponse :**
+
+## 09 — Le rappel des lignes à relire au moment du PDF
+
+**Question :** quand vous sortez le PDF avec des lignes encore à relire, comment voulez-vous être prévenu ?
+**Choix :**
+- Un encadré en haut de la saisie qui liste les lignes, et la fenêtre d'impression s'ouvre aussitôt par-dessus.
+- Une boîte de Chrome « 2 lignes encore à relire » à fermer d'un clic avant que la fenêtre d'impression s'ouvre.
+- Un court message à côté du bouton « Sortir le PDF », sans la liste des lignes.
+**En attendant :** l'encadré en haut de la saisie, qui ne demande aucun clic de plus (capture `captures/09-pdf-rappel.png`). Passer à une boîte de Chrome est une ligne dans `app.js` et un passage du contrôle automatique, mais ajoute un clic chaque soir.
+**Réponse :**

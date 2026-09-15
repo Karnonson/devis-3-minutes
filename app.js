@@ -19,6 +19,8 @@
   let devis = null;
   // Vrai après un clic refusé sur « Sortir le PDF », jusqu'à ce que tout soit complété ou le devis quitté.
   let refusAffiche = false;
+  // Vrai après un PDF sorti avec des lignes encore « à relire », jusqu'à ce qu'il n'en reste plus ou le devis quitté.
+  let rappelActif = false;
 
   function afficherEcran(nom) {
     Object.keys(ecrans).forEach((k) => { ecrans[k].hidden = k !== nom; });
@@ -285,23 +287,26 @@
       menu.setAttribute('aria-label', 'Statut de ' + d.numero);
       remplirMenuStatut(menu, d.statut);
       tr.querySelector('.col-statut').appendChild(menu);
-      const supprimer = document.createElement('button');
-      supprimer.type = 'button';
-      supprimer.className = 'supprimer-devis';
-      supprimer.textContent = 'Supprimer';
-      supprimer.setAttribute('aria-label', 'Supprimer ' + d.numero);
-      tr.querySelector('.col-actions').appendChild(supprimer);
+      [['dupliquer-devis', 'Dupliquer'], ['supprimer-devis', 'Supprimer']].forEach(([classe, libelle]) => {
+        const bouton = document.createElement('button');
+        bouton.type = 'button';
+        bouton.className = 'action-devis ' + classe;
+        bouton.textContent = libelle;
+        bouton.setAttribute('aria-label', libelle + ' ' + d.numero);
+        tr.querySelector('.col-actions').appendChild(bouton);
+      });
       corps.appendChild(tr);
     });
     $('liste-vide').hidden = liste.length > 0;
     $('liste-devis').hidden = liste.length === 0;
   }
 
-  // Un clic sur la ligne ouvre le devis, sauf sur le lien, le statut ou « Supprimer ».
+  // Un clic sur la ligne ouvre le devis, sauf sur le lien, le statut, « Dupliquer » ou « Supprimer ».
   $('liste-lignes').addEventListener('click', (e) => {
     const tr = e.target.closest('tr[data-numero]');
     if (!tr) return;
     if (e.target.closest('.supprimer-devis')) supprimerDevis(tr.dataset.numero);
+    else if (e.target.closest('.dupliquer-devis')) dupliquerDevis(tr.dataset.numero);
     else if (!e.target.closest('a, select')) location.hash = tr.dataset.numero;
   });
 
@@ -331,7 +336,8 @@
     return { titre: '', detail: '', quantite: '', prix: '' };
   }
 
-  function nouveauDevis() {
+  // Nouveau devis, ou copie d'un devis existant (source). Tant que le nom, l'adresse ou le SIRET manquent : renvoi vers les réglages.
+  function nouveauDevis(source) {
     const reglages = lireReglages();
     if (essentielManquant(reglages)) {
       if (location.hash === '#reglages') afficherReglages(); else location.hash = 'reglages';
@@ -356,9 +362,27 @@
       acompte: reglages.acompte,
       conditions: reglages.conditions,
     };
+    // Copie : client vide ; lignes, prix, TVA, remise et acompte gardés, chaque ligne marquée « à relire ».
+    if (source) {
+      d.lignes = (Array.isArray(source.lignes) ? source.lignes : []).map((l) => {
+        const ligne = ligneVide();
+        Object.keys(ligne).forEach((k) => { if (typeof l[k] === 'string') ligne[k] = l[k]; });
+        ligne.aRelire = true;
+        return ligne;
+      });
+      if (TAUX_POSSIBLES.indexOf(source.tva) !== -1) d.tva = source.tva; else d.tva = TAUX_TVA;
+      d.remise = typeof source.remise === 'string' ? source.remise : '0';
+      d.acompte = typeof source.acompte === 'string' ? source.acompte : ACOMPTE;
+    }
     liste.push(d);
     ecrire(CLE_DEVIS, liste);
     location.hash = d.numero;
+  }
+
+  // « Dupliquer » : la copie reçoit un nouveau numéro et s'ouvre aussitôt.
+  function dupliquerDevis(numero) {
+    const source = tousLesDevis().find((d) => d.numero === numero);
+    if (source) nouveauDevis(source); else dessinerListe();
   }
 
   // Ouvre le devis tel qu'il est dans la mémoire ; false s'il n'existe pas.
@@ -387,6 +411,7 @@
     remplirMenuStatut($('devis-statut'), devis.statut);
     poserPiedDePage(devis.numero);
     refusAffiche = false;
+    rappelActif = false;
     afficherEcran('devis');
     dessinerLignes();
     $('client-nom').focus();
@@ -407,6 +432,7 @@
         // Les exemples ne s'affichent que sur la première ligne.
         if (i > 0 && (el.dataset.champ === 'titre' || el.dataset.champ === 'detail')) el.placeholder = '';
       });
+      li.classList.toggle('a-relire', !!ligne.aRelire);
       li.querySelector('[data-action="monter"]').disabled = i === 0;
       li.querySelector('[data-action="descendre"]').disabled = i === devis.lignes.length - 1;
       listeLignes.appendChild(li);
@@ -423,10 +449,28 @@
     const champ = e.target.dataset.champ;
     const li = e.target.closest('.ligne');
     if (!champ || !li) return;
-    devis.lignes[Number(li.dataset.rang)][champ] = e.target.value;
+    const ligne = devis.lignes[Number(li.dataset.rang)];
+    ligne[champ] = e.target.value;
+    relue(ligne, li); // modifiée : plus à relire
     enregistrer();
     rafraichir();
   });
+
+  // Case « Relue » d'une ligne copiée : un clic retire le repère « à relire ».
+  listeLignes.addEventListener('change', (e) => {
+    if (e.target.dataset.action !== 'relue') return;
+    const li = e.target.closest('.ligne');
+    relue(devis.lignes[Number(li.dataset.rang)], li);
+    e.target.checked = false;
+    enregistrer();
+    li.querySelector('[data-champ="titre"]').focus({ preventScroll: true });
+    marquerRelire();
+  });
+
+  function relue(ligne, li) {
+    delete ligne.aRelire;
+    li.classList.remove('a-relire');
+  }
 
   listeLignes.addEventListener('click', (e) => {
     const bouton = e.target.closest('button[data-action]');
@@ -633,6 +677,7 @@
       '</div>';
 
     marquerManques();
+    marquerRelire();
   }
 
   // ---- Saisie contrôlée ----
@@ -710,6 +755,38 @@
     if (m) m.el.focus();
   });
 
+  // Après un PDF sorti avec des lignes encore « à relire » : rappel en haut de la saisie, tenu à jour ; il disparaît
+  // quand toutes sont relues. Renvoie le nombre de lignes à relire.
+  function marquerRelire() {
+    const rangs = [];
+    devis.lignes.forEach((l, i) => { if (l.aRelire) rangs.push(i); });
+    if (rangs.length === 0) rappelActif = false;
+    const liste = $('rappel-liste');
+    liste.textContent = '';
+    if (rappelActif) {
+      $('rappel-titre').textContent = rangs.length + (rangs.length > 1 ? ' lignes encore à relire' : ' ligne encore à relire');
+      rangs.forEach((i) => {
+        const li = document.createElement('li');
+        const bouton = document.createElement('button');
+        bouton.type = 'button';
+        bouton.dataset.rang = i;
+        const titre = devis.lignes[i].titre.trim();
+        bouton.textContent = 'Ligne ' + (i + 1) + (titre ? ' : ' + titre : '');
+        li.appendChild(bouton);
+        liste.appendChild(li);
+      });
+    }
+    $('rappel').hidden = !rappelActif;
+    return rangs.length;
+  }
+
+  // Un clic sur une ligne du rappel met le curseur dans son titre.
+  $('rappel-liste').addEventListener('click', (e) => {
+    const bouton = e.target.closest('button[data-rang]');
+    const li = bouton && listeLignes.children[Number(bouton.dataset.rang)];
+    if (li) li.querySelector('[data-champ="titre"]').focus();
+  });
+
   // L'aperçu garde les proportions A4 et se réduit si la place manque.
   const zoneApercu = $('apercu-zone');
   function ajusterApercu() {
@@ -724,23 +801,33 @@
   // ---- PDF ----
 
   // Refusé tant qu'il manque quelque chose ; ne touche jamais au statut.
+  // Des lignes encore « à relire » ne bloquent pas : la page les signale et le PDF sort quand même.
   $('sortir-pdf').addEventListener('click', () => {
     refusAffiche = true;
     if (marquerManques().length > 0) {
+      rappelActif = false;
+      marquerRelire();
       $('saisie').scrollTop = 0;
       return;
     }
-    // Chrome propose le titre de la page comme nom du fichier PDF.
-    document.title = devis.numero + ' - ' + devis.client.nom.trim();
-    window.print();
+    rappelActif = true;
+    const imprimer = () => {
+      // Chrome propose le titre de la page comme nom du fichier PDF.
+      document.title = devis.numero + ' - ' + devis.client.nom.trim();
+      window.print();
+    };
+    if (marquerRelire() === 0) { imprimer(); return; }
+    // Le rappel s'affiche d'abord, puis la fenêtre d'impression s'ouvre par-dessus.
+    $('saisie').scrollTop = 0;
+    requestAnimationFrame(() => setTimeout(() => { if (devis) imprimer(); }, 0));
   });
 
   window.addEventListener('afterprint', () => { document.title = TITRE_PAGE; });
   window.addEventListener('beforeprint', () => { feuille.style.zoom = ''; });
   window.addEventListener('afterprint', ajusterApercu);
 
-  $('nouveau-devis').addEventListener('click', nouveauDevis);
-  $('nouveau-devis-vide').addEventListener('click', nouveauDevis);
+  $('nouveau-devis').addEventListener('click', () => nouveauDevis());
+  $('nouveau-devis-vide').addEventListener('click', () => nouveauDevis());
 
   // Ouverture sans écran demandé et sans l'essentiel des réglages (première ouverture, données
   // effacées, autre profil) : la page s'ouvre sur les réglages.
