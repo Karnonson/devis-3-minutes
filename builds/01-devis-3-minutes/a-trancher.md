@@ -96,7 +96,7 @@
 - La dernière ligne du tableau emmenée avec les totaux, en-tête du tableau compris.
 - Les totaux, précédés d'un rappel du devis (numéro et client).
 **En attendant :** la fin passe entière en page 2, qui commence par les totaux, sans en-tête ni rappel ; dans le devis de 7 lignes, la page 1 garde un grand blanc (capture `captures/07-totaux-en-page-2.png`). Emmener la dernière ligne a été essayé : Chrome coupait alors la fin dans certains devis, il faudrait une autre façon de faire et des passages de plus dans `tests/pdf.js`. Un rappel du devis est quelques lignes de `styles.css` et `app.js`, et un passage du contrôle.
-**Réponse :**
+**Réponse :** les totaux seuls, la page 1 finissant par un blanc sous le tableau — ce qui est en place.
 
 ## 07 — Montant qui domine en noir et blanc
 
@@ -106,4 +106,4 @@
 - « Reste à payer », puisque c'est ce que le prospect règle.
 - Les deux au même poids.
 **En attendant :** « Total TTC » est vert sapin, demi-gras et plus grand, ce qui donne un gris foncé à l'impression ; « Reste à payer » est bleu nuit, demi-gras, taille normale, ce qui donne presque du noir et le fait ressortir autant, voire plus. Changer l'équilibre ne touche que les lignes `.f-ttc` et `.f-reste` de `styles.css`, et le contrôle du contraste.
-**Réponse :**
+**Réponse :** garder l'équilibre actuel, « Total TTC » plus grand en gris foncé et « Reste à payer » presque noir en taille normale — ce qui est en place.
