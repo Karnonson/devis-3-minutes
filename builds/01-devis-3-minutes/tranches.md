@@ -186,6 +186,7 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 
 **Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 25 s).
 **Fichiers :** `index.html`, `styles.css`, `app.js`, `calc.js`, `tests/calc.test.js`, `tests/page.js`, `builds/01-devis-3-minutes/a-trancher.md`, `builds/01-devis-3-minutes/captures/06-saisie-refusee.png`, `06-pdf-refuse.png`, `06-manques-en-cours.png`, `06-pdf-accepte.png`.
+**Audit :** fusionner, `audits/06.md` — les 7 lignes Fait quand tiennent dans la page pilotée de l'extérieur, cas en plus compris, et les deux contrôles passent.
 
 ## 07 — Un devis de plusieurs pages, lisible en noir et blanc
 
