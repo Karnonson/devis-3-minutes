@@ -35,6 +35,7 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 
 **Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`.
 **Fichiers :** `index.html`, `styles.css`, `app.js`, `calc.js`, `tests/calc.test.js`, `fonts/Inter-Regular.woff2`, `fonts/Inter-SemiBold.woff2`, `fonts/LICENSE.txt`, `builds/01-devis-3-minutes/captures/01-accueil.png`, `01-nouveau-devis.png`, `01-six-lignes.png`, `01-fenetre-impression.png`, `01-pdf.png`.
+**Audit :** fusionner, `audits/01.md` — les 14 lignes Fait quand tiennent dans la page pilotée dans Chrome, `node --test` passe, rien hors de la tranche.
 
 ## 02 — La liste des devis, gardée d'un jour à l'autre
 
