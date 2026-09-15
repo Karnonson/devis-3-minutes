@@ -68,3 +68,22 @@
 - Un court message à côté du bouton « Sortir le PDF », sans la liste des lignes.
 **En attendant :** l'encadré en haut de la saisie, qui ne demande aucun clic de plus (capture `captures/09-pdf-rappel.png`). Passer à une boîte de Chrome est une ligne dans `app.js` et un passage du contrôle automatique, mais ajoute un clic chaque soir.
 **Réponse :**
+
+## 10 — Allure du nom de l'ancien client signalé
+
+**Question :** dans une copie, comment voulez-vous voir le nom de l'ancien client qui traîne dans le titre ou le détail d'une ligne ?
+**Choix :**
+- Le mot surligné en rouge pâle et souligné de rouge dans la case, avec une note rouge sous la ligne : « Contient « Karma », le nom du client du devis copié. »
+- La case entière entourée en rouge, avec la même note, sans surligner le mot.
+- Le mot surligné seulement, sans note sous la ligne.
+**En attendant :** le mot surligné et la note (captures `captures/10-karma-signale.png` et `captures/10-titre-et-casse.png`). Retirer la note ou passer à la case entourée ne touche que quelques lignes de `styles.css` et de `app.js`, et un passage du contrôle automatique.
+**Réponse :**
+
+## 10 — Le nom de l'ancien client à l'intérieur d'un autre mot
+
+**Question :** quand le nom de l'ancien client fait partie d'un mot plus long (« Karma » dans « Karmaland »), voulez-vous qu'il soit signalé aussi ?
+**Choix :**
+- Non : seul le mot entier est signalé, pour ne pas voir en rouge des mots sans rapport avec un nom court (« Lune » dans « Lunettes »).
+- Oui : toute suite de lettres identique au nom est signalée, même au milieu d'un mot.
+**En attendant :** seul le mot entier est signalé. Signaler aussi à l'intérieur des mots est une ligne dans `app.js` et un passage du contrôle automatique.
+**Réponse :**

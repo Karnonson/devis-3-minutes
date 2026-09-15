@@ -263,9 +263,19 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 **À construire :** dans une copie, le nom de l'ancien client apparaît en rouge partout où il traîne, jusqu'à ce qu'il ait disparu. Avec cette dernière pièce, le trajet du mardi 6 octobre se déroule de bout en bout et se rejoue automatiquement.
 **Bloqué par :** 08, 09.
 **Fait quand :**
-- [ ] Le nom de l'ancien client sans sa forme juridique (« Karma » pour « Karma SAS ») est signalé en rouge, quelle que soit la casse, dans le titre ou le détail des lignes de la copie, jusqu'à ce qu'il n'y figure plus. *(story 52)*
-- [ ] Copie d'un devis sans nom de client : rien n'est signalé en rouge. *(story 53)*
-- [ ] Le trajet du mardi 6 octobre (`architecture.md`, **Trajet**) se rejoue automatiquement dans Chrome sans fenêtre, en partant d'une première ouverture : duplication de DEV-2026-019 Karma SAS en DEV-2026-022, détail contenant « Karma » signalé puis réécrit, ligne supprimée, adresse oubliée refusée au PDF, titre « DEV-2026-022 - Studio Lune », statut « Envoyé » gardé après rechargement.
+- [x] Le nom de l'ancien client sans sa forme juridique (« Karma » pour « Karma SAS ») est signalé en rouge, quelle que soit la casse, dans le titre ou le détail des lignes de la copie, jusqu'à ce qu'il n'y figure plus. *(story 52)*
+- [x] Copie d'un devis sans nom de client : rien n'est signalé en rouge. *(story 53)*
+- [x] Le trajet du mardi 6 octobre (`architecture.md`, **Trajet**) se rejoue automatiquement dans Chrome sans fenêtre, en partant d'une première ouverture : duplication de DEV-2026-019 Karma SAS en DEV-2026-022, détail contenant « Karma » signalé puis réécrit, ligne supprimée, adresse oubliée refusée au PDF, titre « DEV-2026-022 - Studio Lune », statut « Envoyé » gardé après rechargement.
+
+**Choisi :**
+- Le signalement vit dans la saisie seulement : chaque passage du nom est surligné en rouge pâle et souligné de rouge, derrière le texte de la case du titre ou du détail (il suit la case quand elle défile), et une note rouge s'affiche sous la ligne : « Contient « Karma », le nom du client du devis copié. » (voir `a-trancher.md`). L'aperçu et le PDF n'en montrent rien ; il ne bloque pas le PDF et n'entre pas dans le rappel « à relire ».
+- Le nom est cherché comme mot entier, espaces multiples compris : « Karma » dans « Karmaland » n'est pas signalé (voir `a-trancher.md`). Sont retirées au début ou à la fin du nom les formes juridiques courantes (EI, EIRL, EURL, SA, SARL, SAS, SASU, SCI, SCOP, SNC, SELARL…, points ignorés : « S.A.S. ») ; s'il ne reste rien, rien n'est cherché.
+- Le signalement suit le texte à chaque frappe : effacé, il disparaît ; retapé, il revient ; cocher « Relue » ne le retire pas. Si le nouveau client porte le même nom, le signalement reste tant que le nom figure dans les lignes.
+- La copie garde le nom complet du client d'origine (`ancienClient`), comme le prévoit **Données** ; une copie de copie cherche le client de la copie, et rien si la copie n'avait pas de client.
+- Le trajet se rejoue dans `tests/trajet.js`, sur un profil Chrome neuf : l'horloge de la page est décalée au mardi 6 octobre 2026 à 20 h 30 par un témoin posé avant chaque chargement (l'horloge virtuelle de Chrome filait de plusieurs jours pendant le passage). DEV-2026-019 (Karma SAS, envoyé) est préparé avec « Prochain numéro » réglé à 19, puis 020 et 021. `CAPTURES=<dossier>` garde les captures du trajet. `tests/page.js` rejoue en plus le titre, la casse, « Karmaland », la note, le rechargement, le PDF non bloqué et la copie d'un devis sans client.
+
+**Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 45 s). Trajet du 6 octobre : `node --test tests/trajet.js` (environ 15 s). Contrôle automatique du PDF : `node --test tests/pdf.js` (environ 45 s, demande `pdftotext`).
+**Fichiers :** `index.html`, `styles.css`, `app.js`, `tests/page.js`, `tests/trajet.js`, `builds/01-devis-3-minutes/a-trancher.md`, `builds/01-devis-3-minutes/captures/10-karma-signale.png`, `10-titre-et-casse.png`, `10-karma-reecrit.png`, `10-copie-sans-client.png`, `10-adresse-refusee.png`, `10-liste-envoye.png`.
 
 ## Non placé
 

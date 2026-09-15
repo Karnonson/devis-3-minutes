@@ -1241,3 +1241,113 @@ test('« Sortir le PDF » avec des lignes encore à relire : la page le signale 
   assert.deepEqual(onglet.dialogues, []);
   assert.deepEqual(onglet.erreurs, []);
 });
+
+// ---- Le nom de l'ancien client signalé (tranche 10) ----
+
+// Textes affichés en rouge (couleur, fond, soulignement ou ombre) sous un sélecteur, éléments visibles seulement.
+const rougesDans = (o, selecteur) => o.evaluer(`[...document.querySelectorAll(${JSON.stringify(selecteur + ' *')})]
+  .filter((el) => el.offsetParent !== null && el.textContent.trim() && !el.children.length)
+  .filter((el) => { const s = getComputedStyle(el);
+    return [s.color, s.backgroundColor, s.boxShadow, s.borderBottomColor].some((v) => /180, 35, 24/.test(v)); })
+  .map((el) => el.textContent.trim())`);
+// Pour chaque ligne de la saisie : passages signalés en rouge dans le titre et dans le détail (posés sur la case),
+// et la note rouge sous la ligne (null si aucune).
+const signalements = (o) => o.evaluer(`[...document.querySelectorAll('#lignes .ligne')].map((li) => {
+  const rouge = (el) => { const s = getComputedStyle(el);
+    return [s.color, s.backgroundColor, s.boxShadow, s.borderBottomColor].some((v) => /180, 35, 24/.test(v)); };
+  const passages = (champ) => {
+    const c = li.querySelector('[data-champ="' + champ + '"]'); const r = c.getBoundingClientRect();
+    return [...li.querySelectorAll('*')].filter((el) => el !== c && !el.children.length && el.offsetParent !== null
+      && el.textContent.trim() && rouge(el) && !el.closest('.ligne-aide, .ligne-ancien-client'))
+      .filter((el) => { const m = el.getBoundingClientRect(); return m.left >= r.left && m.right <= r.right && m.top >= r.top && m.bottom <= r.bottom; })
+      .map((el) => el.textContent);
+  };
+  const note = li.querySelector('.ligne-ancien-client');
+  const noteVisible = note && note.offsetParent !== null && note.innerText.trim();
+  return { titre: passages('titre'), detail: passages('detail'), note: noteVisible && rouge(note) ? note.innerText.trim() : null };
+})`);
+const RIEN = { titre: [], detail: [], note: null };
+
+test('copie d\'un devis de Karma SAS : « Karma » signalé en rouge, quelle que soit la casse, dans le titre et le détail, jusqu\'à ce qu\'il n\'y figure plus', async () => {
+  onglet.dialogues.length = 0;
+  await onglet.cliquer('#retour-liste');
+  await onglet.cliquer(`${ligneListe(5)} a`);
+  await onglet.attendreTexte('#devis-numero-barre', num(5));
+  await onglet.taper(ligneSaisie(1, 'detail'), 'Une journée avec l\'équipe produit de Karma,\npuis restitution chez KARMA.');
+  await onglet.taper(ligneSaisie(2, 'titre'), 'Maquettes du site karma');
+  await onglet.taper(ligneSaisie(3, 'detail'), 'Point d\'étape, hors Karmaland.');
+  // Le devis d'origine n'est pas une copie : rien n'y est signalé.
+  assert.deepEqual(await signalements(onglet), [RIEN, RIEN, RIEN]);
+
+  await onglet.cliquer('#retour-liste');
+  await onglet.cliquer(ligneListeDupliquer(5));
+  await onglet.attendreTexte('#devis-numero-barre', num(8));
+  const note = 'Contient « Karma », le nom du client du devis copié.';
+  assert.deepEqual(await signalements(onglet), [
+    { titre: [], detail: ['Karma', 'KARMA'], note },
+    { titre: ['karma'], detail: [], note },
+    RIEN, // « Karmaland » n'est pas le nom
+  ]);
+  // Ailleurs dans la saisie, et sur l'aperçu (le PDF) : rien en rouge.
+  assert.deepEqual(await rougesDans(onglet, '#saisie .bloc:not(:has(#lignes))'), []);
+  assert.deepEqual(await rougesDans(onglet, '#feuille'), []);
+  assert.match(await onglet.texte('#feuille'), /Karma/);
+
+  // Cocher « Relue » ne retire pas le signalement.
+  await onglet.cliquer('#lignes .ligne:nth-child(1) .relire-coche');
+  await attendre(async () => (await marquesARelire(onglet))[0] === false, 'ligne 1 cochée');
+  assert.deepEqual((await signalements(onglet))[0], { titre: [], detail: ['Karma', 'KARMA'], note });
+
+  // Réécrit : le signalement suit, et disparaît quand le nom n'y figure plus.
+  await onglet.taper(ligneSaisie(1, 'detail'), 'Une journée avec l\'équipe produit,\npuis restitution chez KARMA.');
+  assert.deepEqual((await signalements(onglet))[0], { titre: [], detail: ['KARMA'], note });
+  await onglet.taper(ligneSaisie(1, 'detail'), 'Une journée avec l\'équipe produit,\npuis restitution sur place.');
+  await onglet.taper(ligneSaisie(2, 'titre'), 'Maquettes du site');
+  assert.deepEqual(await signalements(onglet), [RIEN, RIEN, RIEN]);
+
+  // Retapé, il est de nouveau signalé ; il reste après rechargement.
+  await onglet.taper(ligneSaisie(3, 'detail'), 'Point d\'étape chez Karma.');
+  assert.deepEqual(await signalements(onglet), [RIEN, RIEN, { titre: [], detail: ['Karma'], note }]);
+  await onglet.recharger();
+  await onglet.attendreTexte('#devis-numero-barre', num(8));
+  assert.deepEqual(await signalements(onglet), [RIEN, RIEN, { titre: [], detail: ['Karma'], note }]);
+
+  // Le signalement ne bloque pas le PDF.
+  await onglet.taper('#client-nom', 'Studio Lune');
+  await onglet.taper('#client-adresse', '3 place du Marché\n35000 Rennes');
+  const avant = (await impressions(onglet)).length;
+  await onglet.cliquer('#sortir-pdf');
+  await attendre(async () => (await impressions(onglet)).length === avant + 1, 'PDF sorti malgré le nom signalé');
+  assert.deepEqual((await impressions(onglet)).slice(avant), [`${num(8)} - Studio Lune`]);
+  assert.deepEqual(await manquesAffiches(onglet), []);
+  assert.deepEqual(onglet.dialogues, []);
+  assert.deepEqual(onglet.erreurs, []);
+});
+
+test('copie d\'un devis sans nom de client : rien n\'est signalé en rouge', async () => {
+  await onglet.cliquer('#retour-liste');
+  await onglet.cliquer('#nouveau-devis');
+  await onglet.attendreTexte('#devis-numero-barre', num(9));
+  await onglet.taper(ligneSaisie(1, 'titre'), 'Atelier Karma SAS');
+  await onglet.taper(ligneSaisie(1, 'detail'), 'Tout texte compris, (sans client) aussi.');
+  await onglet.taper(ligneSaisie(1, 'quantite'), '1');
+  await onglet.taper(ligneSaisie(1, 'prix'), '450');
+  await onglet.cliquer('#retour-liste');
+  await onglet.attendreTexte('#liste-lignes', num(9));
+  assert.equal((await lignesDeLaListe(onglet))[0][1], '(sans client)');
+
+  await onglet.cliquer(ligneListeDupliquer(9));
+  await onglet.attendreTexte('#devis-numero-barre', num(10));
+  assert.deepEqual(await marquesARelire(onglet), [true], 'la copie est bien une copie');
+  assert.deepEqual(await signalements(onglet), [RIEN]);
+  assert.deepEqual(await rougesDans(onglet, '#saisie'), []);
+
+  // Le client tapé dans la copie ne déclenche aucune recherche, ni après rechargement.
+  await onglet.taper('#client-nom', 'Atelier');
+  await onglet.taper(ligneSaisie(1, 'detail'), 'Tout texte compris, (sans client) aussi, Atelier.');
+  await onglet.recharger();
+  await onglet.attendreTexte('#devis-numero-barre', num(10));
+  assert.deepEqual(await signalements(onglet), [RIEN]);
+  assert.deepEqual(await rougesDans(onglet, '#saisie'), []);
+  assert.deepEqual(onglet.erreurs, []);
+});

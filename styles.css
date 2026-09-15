@@ -317,7 +317,7 @@ a.bouton { display: inline-block; text-decoration: none; }
 }
 
 .champ { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
-.champ > span { font-size: 12px; font-weight: 600; color: var(--nuit); }
+.champ > span:not(.surligne) { font-size: 12px; font-weight: 600; color: var(--nuit); }
 .champ em { font-style: normal; font-weight: 400; color: var(--nuit-pale); }
 
 .champ input, .champ textarea {
@@ -358,6 +358,30 @@ a.bouton { display: inline-block; text-decoration: none; }
 .icone:hover:not(:disabled) { color: var(--nuit); border-color: var(--nuit-pale); }
 .icone.danger:hover { color: var(--rouge); border-color: var(--rouge); }
 .icone:disabled { opacity: 0.35; cursor: default; }
+
+/* Copie : le nom de l'ancien client, surligné en rouge derrière le texte du titre ou du détail. Le fond reprend
+   la zone de texte de la case (posé par app.js) ; son texte est invisible, seul le surlignage se voit. */
+.surligne { position: relative; display: block; border-radius: var(--rayon); background: var(--blanc); }
+.surligne > input, .surligne > textarea { display: block; }
+.surligne-fond { display: none; }
+.surligne.signale .surligne-fond {
+  display: block;
+  position: absolute;
+  padding: 7px 10px;
+  overflow: hidden;
+  color: transparent;
+  white-space: pre;
+  pointer-events: none;
+}
+.surligne.signale:has(textarea) .surligne-fond { white-space: pre-wrap; overflow-wrap: break-word; }
+.surligne.signale input, .surligne.signale textarea { position: relative; background: transparent; }
+.surligne-fond mark {
+  color: transparent;
+  background: rgba(180, 35, 24, 0.14);
+  box-shadow: inset 0 -2px 0 var(--rouge);
+  border-radius: 2px;
+}
+.ligne-ancien-client { margin: -4px 0 10px; }
 
 .ligne-chiffres { display: grid; grid-template-columns: 1fr 1.4fr 1.4fr; gap: 8px; }
 .total-ligne output { padding: 7px 0; font-weight: 600; text-align: right; white-space: nowrap; }

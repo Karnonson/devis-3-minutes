@@ -373,6 +373,9 @@
       if (TAUX_POSSIBLES.indexOf(source.tva) !== -1) d.tva = source.tva; else d.tva = TAUX_TVA;
       d.remise = typeof source.remise === 'string' ? source.remise : '0';
       d.acompte = typeof source.acompte === 'string' ? source.acompte : ACOMPTE;
+      // Nom du client d'origine, à signaler dans les lignes de la copie ; sans nom, rien n'est recherché.
+      const ancien = source.client && typeof source.client.nom === 'string' ? source.client.nom.trim() : '';
+      if (ancien) d.ancienClient = ancien;
     }
     liste.push(d);
     ecrire(CLE_DEVIS, liste);
@@ -421,6 +424,7 @@
   // ---- Saisie ----
 
   function dessinerLignes(focusRang, focusAction) {
+    tailleDesCases.disconnect();
     listeLignes.textContent = '';
     devis.lignes.forEach((ligne, i) => {
       const li = modeleLigne.content.firstElementChild.cloneNode(true);
@@ -433,6 +437,7 @@
         if (i > 0 && (el.dataset.champ === 'titre' || el.dataset.champ === 'detail')) el.placeholder = '';
       });
       li.classList.toggle('a-relire', !!ligne.aRelire);
+      li.querySelectorAll('.surligne [data-champ]').forEach((champ) => tailleDesCases.observe(champ));
       li.querySelector('[data-action="monter"]').disabled = i === 0;
       li.querySelector('[data-action="descendre"]').disabled = i === devis.lignes.length - 1;
       listeLignes.appendChild(li);
@@ -678,6 +683,7 @@
 
     marquerManques();
     marquerRelire();
+    marquerAncienClient();
   }
 
   // ---- Saisie contrôlée ----
@@ -779,6 +785,74 @@
     $('rappel').hidden = !rappelActif;
     return rangs.length;
   }
+
+  // ---- Nom de l'ancien client (copie) ----
+  // Cherché sans sa forme juridique (« Karma » pour « Karma SAS »), sans tenir compte des majuscules, comme mot entier,
+  // dans le titre et le détail des lignes ; surligné en rouge tant qu'il y figure.
+
+  const FORMES_JURIDIQUES = new Set(['EI', 'EIRL', 'EURL', 'SA', 'SARL', 'SARLU', 'SAS', 'SASU', 'SCA', 'SCI', 'SCIC',
+    'SCM', 'SCOP', 'SCP', 'SCS', 'SEL', 'SELAFA', 'SELARL', 'SELAS', 'SELCA', 'SEM', 'SNC', 'GIE', 'GAEC', 'EARL']);
+  const PONCTUATION_AUX_BORDS = /^[\s.,;:()\-–—]+|[\s.,;:()\-–—]+$/g;
+
+  // « Karma SAS » → « Karma », « SARL Acme » → « Acme » ; '' s'il ne reste rien.
+  function nomSansForme(nom) {
+    const mots = String(nom || '').trim().split(/\s+/).filter(Boolean);
+    const estForme = (mot) => FORMES_JURIDIQUES.has(mot.replace(/[.,;:()]/g, '').toUpperCase());
+    while (mots.length && estForme(mots[mots.length - 1])) mots.pop();
+    while (mots.length && estForme(mots[0])) mots.shift();
+    return mots.join(' ').replace(PONCTUATION_AUX_BORDS, '');
+  }
+
+  // Motif du nom de l'ancien client pour le devis ouvert, ou null (pas une copie, ou origine sans nom).
+  function motifAncienClient() {
+    const nom = nomSansForme(devis.ancienClient);
+    if (!nom) return null;
+    const corps = nom.split(/\s+/).map((m) => m.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+');
+    return { nom: nom, regex: new RegExp('(?<![\\p{L}\\p{N}])' + corps + '(?![\\p{L}\\p{N}])', 'giu') };
+  }
+
+  function marquerAncienClient() {
+    const motif = motifAncienClient();
+    listeLignes.querySelectorAll('.ligne').forEach((li) => {
+      let trouve = false;
+      li.querySelectorAll('.surligne').forEach((boite) => {
+        const champ = boite.querySelector('[data-champ]');
+        const fond = boite.querySelector('.surligne-fond');
+        let html = '';
+        let dernier = 0;
+        const texte = champ.value;
+        if (motif) {
+          for (const m of texte.matchAll(motif.regex)) {
+            html += echapper(texte.slice(dernier, m.index)) + '<mark>' + echapper(m[0]) + '</mark>';
+            dernier = m.index + m[0].length;
+          }
+        }
+        const signale = dernier > 0;
+        boite.classList.toggle('signale', signale);
+        // Retour à la ligne final : une zone de texte finissant par un saut de ligne garde sa dernière ligne.
+        fond.innerHTML = signale ? html + echapper(texte.slice(dernier)) + '\n' : '';
+        if (signale) { trouve = true; calerFond(champ); }
+      });
+      const note = li.querySelector('.ligne-ancien-client');
+      note.textContent = trouve ? 'Contient « ' + motif.nom + ' », le nom du client du devis copié.' : '';
+      note.hidden = !trouve;
+    });
+  }
+
+  // Le fond surligné couvre exactement la zone de texte de la case (sans bordure ni barre de défilement) et défile avec elle.
+  function calerFond(champ) {
+    const boite = champ.parentElement;
+    if (!boite.classList.contains('signale')) return;
+    const fond = boite.querySelector('.surligne-fond');
+    fond.style.left = champ.clientLeft + 'px';
+    fond.style.top = champ.clientTop + 'px';
+    fond.style.width = champ.clientWidth + 'px';
+    fond.style.height = champ.clientHeight + 'px';
+    fond.scrollTop = champ.scrollTop;
+    fond.scrollLeft = champ.scrollLeft;
+  }
+  listeLignes.addEventListener('scroll', (e) => { if (e.target.closest('.surligne')) calerFond(e.target); }, true);
+  const tailleDesCases = new ResizeObserver((entrees) => entrees.forEach((e) => calerFond(e.target)));
 
   // Un clic sur une ligne du rappel met le curseur dans son titre.
   $('rappel-liste').addEventListener('click', (e) => {
