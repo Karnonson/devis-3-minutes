@@ -256,6 +256,7 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 
 **Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 35 s). Contrôle automatique du PDF : `node --test tests/pdf.js` (environ 45 s, demande `pdftotext`).
 **Fichiers :** `index.html`, `styles.css`, `app.js`, `tests/page.js`, `builds/01-devis-3-minutes/a-trancher.md`, `builds/01-devis-3-minutes/captures/09-liste-dupliquer.png`, `09-renvoi-reglages.png`, `09-copie-a-relire.png`, `09-ligne-cochee-modifiee.png`, `09-pdf-rappel.png`.
+**Audit :** fusionner, `audits/09.md` — les 8 lignes Fait quand tiennent dans la page pilotée (renvoi, copie, relecture, repère gardé, rappel au PDF), les trois contrôles passent.
 
 ## 10 — Le nom de l'ancien client signalé, et la soirée du 6 octobre en entier
 
