@@ -132,6 +132,7 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 
 **Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 20 s).
 **Fichiers :** `calc.js`, `app.js`, `index.html`, `styles.css`, `tests/calc.test.js`, `tests/page.js`, `builds/01-devis-3-minutes/a-trancher.md`, `builds/01-devis-3-minutes/captures/04-depart.png`, `04-remise-tva-acompte.png`, `04-tva-0.png`, `04-sans-remise-ni-acompte.png`, `04-remise-refusee.png`, `04-pdf.png`.
+**Audit :** fusionner, `audits/04.md` — les 8 lignes Fait quand tiennent dans la page pilotée dans Chrome et dans le PDF, `node --test` et `node --test tests/page.js` passent, rien hors de la tranche.
 
 ## 05 — Dates, validité, conditions et « Bon pour accord »
 
