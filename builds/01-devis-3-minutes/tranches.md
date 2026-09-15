@@ -67,6 +67,7 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 
 **Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js`.
 **Fichiers :** `index.html`, `styles.css`, `app.js`, `tests/page.js`, `tests/chrome.js`, `builds/01-devis-3-minutes/captures/02-liste-vide.png`, `02-liste.png`, `02-devis-rouvert.png`, `02-reglages.png`.
+**Audit :** fusionner, `audits/02.md` — les 11 lignes Fait quand tiennent dans la page pilotée dans Chrome, `node --test` et `node --test tests/page.js` passent, rien hors de la tranche.
 
 ## 03 — Réglages et première ouverture
 
