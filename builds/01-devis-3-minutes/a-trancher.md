@@ -87,3 +87,23 @@
 - Oui : toute suite de lettres identique au nom est signalée, même au milieu d'un mot.
 **En attendant :** seul le mot entier est signalé. Signaler aussi à l'intérieur des mots est une ligne dans `app.js` et un passage du contrôle automatique.
 **Réponse :** non, seul le mot entier est signalé — ce qui est en place.
+
+## 07 — Page 2 qui ne porte que les totaux
+
+**Question :** quand la fin du devis (totaux, conditions, « Bon pour accord ») ne tient pas sous la dernière ligne, que voulez-vous voir en haut de la page 2 ?
+**Choix :**
+- Les totaux seuls, la page 1 finissant par un blanc sous le tableau.
+- La dernière ligne du tableau emmenée avec les totaux, en-tête du tableau compris.
+- Les totaux, précédés d'un rappel du devis (numéro et client).
+**En attendant :** la fin passe entière en page 2, qui commence par les totaux, sans en-tête ni rappel ; dans le devis de 7 lignes, la page 1 garde un grand blanc (capture `captures/07-totaux-en-page-2.png`). Emmener la dernière ligne a été essayé : Chrome coupait alors la fin dans certains devis, il faudrait une autre façon de faire et des passages de plus dans `tests/pdf.js`. Un rappel du devis est quelques lignes de `styles.css` et `app.js`, et un passage du contrôle.
+**Réponse :**
+
+## 07 — Montant qui domine en noir et blanc
+
+**Question :** sur un devis imprimé en noir et blanc, quel montant doit ressortir le plus ?
+**Choix :**
+- « Total TTC », plus grand et plus foncé que tout le reste.
+- « Reste à payer », puisque c'est ce que le prospect règle.
+- Les deux au même poids.
+**En attendant :** « Total TTC » est vert sapin, demi-gras et plus grand, ce qui donne un gris foncé à l'impression ; « Reste à payer » est bleu nuit, demi-gras, taille normale, ce qui donne presque du noir et le fait ressortir autant, voire plus. Changer l'équilibre ne touche que les lignes `.f-ttc` et `.f-reste` de `styles.css`, et le contrôle du contraste.
+**Réponse :**
