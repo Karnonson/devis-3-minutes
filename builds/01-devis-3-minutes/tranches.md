@@ -207,6 +207,7 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 
 **Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 25 s). Contrôle automatique du PDF : `node --test tests/pdf.js` (environ 45 s, demande `pdftotext`).
 **Fichiers :** `app.js`, `styles.css`, `tests/page.js`, `tests/pdf.js`, `builds/01-devis-3-minutes/captures/07-pdf-court.png`, `07-pdf-deux-pages.png`, `07-totaux-en-page-2.png`, `07-fin-en-page-3.png`, `07-fenetre-impression.png`, `07-noir-et-blanc.png`.
+**Audit :** fusionner, `audits/07.md` — les 3 lignes Fait quand tiennent dans les PDF sortis (1, 2 et 3 pages, en gris compris), les trois contrôles passent.
 
 ## 08 — Statuts et suppression d'un devis
 
