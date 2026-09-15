@@ -14,7 +14,7 @@ Le consultant ouvre une page par un favori de son navigateur. Il arrive sur la l
 - **Couleurs** : fond blanc, texte bleu nuit, un seul accent vert sapin pour les boutons et le total TTC.
 - **Typographie** : une police sans empattement lisible, sobre, sans fantaisie.
 - **Images** : aucune image, aucune illustration, pas de logo.
-- **Référence** : les factures Stripe (stripe.com). Le PDF suit le même style et reste lisible imprimé en noir et blanc.
+- **Référence** : les factures Stripe (stripe.com) ou Qonto. Le PDF suit le même style et reste lisible imprimé en noir et blanc.
 
 ## User stories
 
@@ -80,7 +80,7 @@ Le consultant ouvre une page par un favori de son navigateur. Il arrive sur la l
 49. En tant que consultant, je veux que la copie s'ouvre directement, afin de taper le client tout de suite. *(Supposé)*
 50. En tant que consultant, je veux que chaque ligne copiée soit teintée « à relire » jusqu'à ce que je la modifie ou la coche d'un clic, afin de ne pas envoyer une ligne rédigée pour un autre client.
 51. En tant que consultant, je veux que le repère « à relire » reste quand je ferme la page, afin de reprendre la relecture le lendemain. *(Supposé)*
-52. En tant que consultant, je veux que le nom de l'ancien client soit signalé en rouge partout où il apparaît, sans tenir compte des majuscules, dans le titre ou le détail des lignes ou dans les conditions de la copie, jusqu'à ce qu'il n'y figure plus, afin de repérer ce qui vient de l'autre devis. *(Supposé : où l'on cherche, et fin du signalement)*
+52. En tant que consultant, je veux que le nom de l'ancien client, sans sa forme juridique (« Karma » pour « Karma SAS »), soit signalé en rouge partout où il apparaît, sans tenir compte des majuscules, dans le titre ou le détail des lignes de la copie, jusqu'à ce qu'il n'y figure plus, afin de repérer ce qui vient de l'autre devis. *(Supposé : fin du signalement)*
 53. En tant que consultant, je veux que rien ne soit recherché si le devis d'origine n'avait pas de nom de client, afin de ne pas voir tout le devis signalé à tort. *(Supposé)*
 
 ### Le consultant — sortir le PDF
@@ -194,7 +194,6 @@ Le temps de cinq minutes ne se teste pas dans la page. Il se mesure au chronomè
 | Coordonnées des brouillons mises à jour quand les réglages changent (Q24) | Il veut une règle unique et aucun devis qui change sans qu'il le sache. |
 | Mesure du temps de préparation dans la page (Q26) | Le chronomètre du téléphone suffit pour trois mesures. |
 | PDF téléchargé directement, sans fenêtre d'impression (Q27) | Rendu moins net, page plus lourde. |
-| Retrouver sa liste sur un autre ordinateur (Q30) | Un seul ordinateur sert aux devis, et cela demanderait plus qu'une page statique. |
 | Projet GitHub privé payant (Q31) | Rien de sensible dans le projet, et « rien à payer ». |
 | Ouverture de la page sans internet (Q32) | Il faut internet pour envoyer le devis de toute façon. Plus de travail et de bugs. |
 
@@ -203,7 +202,9 @@ Le temps de cinq minutes ne se teste pas dans la page. Il se mesure au chronomè
 | Hors première version | Ce qui le ferait revenir |
 |---|---|
 | Logo sur le devis | Le consultant en veut un. |
-| Accès aux devis depuis un autre ordinateur ou un téléphone, synchronisation | Il travaille régulièrement sur plus d'un appareil. Cela demanderait sans doute plus qu'une page statique. |
+| Bouton « sauvegarder une copie » de la liste dans un fichier, et restauration (Q1) | Il le demande : l'idée lui plaît, mais pas en première version. |
+| Numéro « v2 » automatique quand un devis envoyé est modifié, ancienne version gardée (Q8) | Il le demande, quand la simplicité de la première version ne suffit plus. |
+| Accès aux devis depuis un autre ordinateur ou un téléphone, synchronisation (Q30) | Il travaille régulièrement sur plus d'un appareil. Cela demanderait sans doute plus qu'une page statique. |
 | Sauvegarde hors de l'ordinateur (serveur, cloud) | Une perte de données survient, ou le risque de la supposition 1 devient inacceptable. |
 | Facture tirée d'un devis accepté, comptabilité, suivi des paiements d'acompte | Le consultant change d'avis sur la facturation. Il a résilié un outil précisément pour ça. |
 | Signature électronique, acceptation en ligne par le prospect | Des prospects exigent une signature au lieu de « ok pour moi » par e-mail. |
@@ -227,7 +228,7 @@ Tout ce qui suit est **Supposé** : complété sans question explicite, à inter
 - *Supposé* — Contenu des réglages : « EI », TVA intracommunautaire facultative, valeurs de départ 20 %, 30 % et 30 jours, pas d'assurance ni d'IBAN.
 - *Supposé* — Contenu du modèle de conditions pré-rempli.
 - *Supposé* — TVA à 0 % : « Total », mention art. 293 B sous les totaux, acompte sur ce total.
-- *Supposé* — Nom de l'ancien client cherché sans tenir compte des majuscules, dans le titre et le détail des lignes et dans les conditions. Le repère « à relire » est enregistré.
+- *Supposé (tranché au découpage)* — Nom de l'ancien client cherché sans sa forme juridique (« Karma » pour « Karma SAS ») et sans tenir compte des majuscules, dans le titre et le détail des lignes seulement : les conditions de la copie viennent des réglages. Le repère « à relire » est enregistré.
 - *Supposé* — Statut modifiable depuis la liste et depuis l'écran du devis.
 - *Supposé* — Montants au format « 1 800,00 € ».
 - *Supposé* — Deux onglets : le dernier enregistrement l'emporte, sans avertissement.
@@ -247,5 +248,5 @@ Tout ce qui suit est **Supposé** : complété sans question explicite, à inter
 - *Supposé* — La copie s'ouvre directement après « Dupliquer » (story 49).
 - *Supposé* — Le signalement du nom de l'ancien client s'arrête dès que le nom n'apparaît plus (story 52).
 - *Supposé* — Aucune recherche de nom si le devis d'origine n'avait pas de client (story 53).
-- *Supposé, **non relu par le consultant*** — « Dupliquer » renvoie aussi vers les réglages tant que le nom, l'adresse ou le SIRET manquent (story 3).
+- *Supposé (accepté au découpage)* — « Dupliquer » renvoie aussi vers les réglages tant que le nom, l'adresse ou le SIRET manquent (story 3).
 - *Supposé* — Le point de contrôle « La page » est rejoué automatiquement dans Chrome sans fenêtre, piloté depuis Node.js sans bibliothèque à installer (Décisions de test).

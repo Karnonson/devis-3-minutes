@@ -79,7 +79,9 @@ Elle évite aussi les trois raisons d'abandon passées : ajouter une ligne ne do
 | Hors première version | Ce qui le ferait revenir |
 |---|---|
 | Logo sur le devis | Le consultant en veut un. |
-| Accès aux devis depuis un autre ordinateur ou un téléphone, synchronisation | Il travaille régulièrement sur plus d'un appareil. Cela demanderait sans doute plus qu'une page statique. |
+| Bouton « sauvegarder une copie » de la liste dans un fichier, et restauration (Q1) | Il le demande : l'idée lui plaît, mais pas en première version. |
+| Numéro « v2 » automatique quand un devis envoyé est modifié, ancienne version gardée (Q8) | Il le demande, quand la simplicité de la première version ne suffit plus. |
+| Accès aux devis depuis un autre ordinateur ou un téléphone, synchronisation (Q30) | Il travaille régulièrement sur plus d'un appareil. Cela demanderait sans doute plus qu'une page statique. |
 | Sauvegarde hors de l'ordinateur (serveur, cloud) | Une perte de données survient, ou le risque de la supposition 1 devient inacceptable. |
 | Facture tirée d'un devis accepté, comptabilité, suivi des paiements d'acompte | Le consultant change d'avis sur la facturation. Il a résilié un outil précisément pour ça. |
 | Signature électronique, acceptation en ligne par le prospect | Des prospects exigent une signature au lieu de « ok pour moi » par e-mail. |
