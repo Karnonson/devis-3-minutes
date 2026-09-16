@@ -195,8 +195,8 @@ test('mardi 6 octobre 2026 au soir : dupliquer DEV-2026-019 puis sortir le PDF d
     ['Reste à payer', '2 381,40 €'],
   ]);
 
-  // 5. « Sortir le PDF » : l'adresse du client manque, refus, manque listé, case entourée en rouge.
-  await o.cliquer('#sortir-pdf');
+  // 5. « Exporter en PDF » : l'adresse du client manque, refus, manque listé, case entourée en rouge.
+  await o.cliquer('#exporter-pdf');
   await o.attendreTexte('#manques', 'Le PDF n\'est pas sorti');
   assert.deepEqual(await manques(), ['Adresse du client']);
   assert.equal(await estRouge('#client-adresse'), true);
@@ -206,11 +206,12 @@ test('mardi 6 octobre 2026 au soir : dupliquer DEV-2026-019 puis sortir le PDF d
   assert.equal(await estRouge('#client-adresse'), false);
 
   // 6. De nouveau : la ligne encore à relire est signalée sans bloquer, titre « DEV-2026-022 - Studio Lune ».
-  await o.cliquer('#sortir-pdf');
+  await o.cliquer('#exporter-pdf');
   await attendre(async () => (await impressions()).length === 1, 'fenêtre d\'impression ouverte');
   assert.deepEqual(await impressions(), ['DEV-2026-022 - Studio Lune']);
   assert.deepEqual(await rappel(), ['1 ligne encore à relire', 'Ligne 3 : Suivi à un mois']);
   assert.deepEqual(await manques(), []);
+  await capture('10-pdf-rappel');
 
   // 7. De retour dans la liste, il passe le statut à « Envoyé » : gardé après rechargement.
   await o.cliquer('#retour-liste');

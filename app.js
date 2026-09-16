@@ -17,7 +17,7 @@
   const feuille = $('feuille');
 
   let devis = null;
-  // Vrai après un clic refusé sur « Sortir le PDF », jusqu'à ce que tout soit complété ou le devis quitté.
+  // Vrai après un clic refusé sur « Exporter en PDF », jusqu'à ce que tout soit complété ou le devis quitté.
   let refusAffiche = false;
   // Vrai après un PDF sorti avec des lignes encore « à relire », jusqu'à ce qu'il n'en reste plus ou le devis quitté.
   let rappelActif = false;
@@ -876,7 +876,7 @@
 
   // Refusé tant qu'il manque quelque chose ; ne touche jamais au statut.
   // Des lignes encore « à relire » ne bloquent pas : la page les signale et le PDF sort quand même.
-  $('sortir-pdf').addEventListener('click', () => {
+  $('exporter-pdf').addEventListener('click', () => {
     refusAffiche = true;
     if (marquerManques().length > 0) {
       rappelActif = false;

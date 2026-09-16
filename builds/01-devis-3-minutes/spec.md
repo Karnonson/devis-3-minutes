@@ -85,7 +85,7 @@ Le consultant ouvre une page par un favori de son navigateur. Il arrive sur la l
 
 ### Le consultant — sortir le PDF
 
-54. En tant que consultant, je veux que « Sortir le PDF » soit refusé tant que le nom ou l'adresse du client manque, qu'il n'y a aucune ligne ou qu'une ligne n'a pas de titre, de quantité ou de prix, afin qu'aucun devis incomplet ne parte.
+54. En tant que consultant, je veux que « Exporter en PDF » soit refusé tant que le nom ou l'adresse du client manque, qu'il n'y a aucune ligne ou qu'une ligne n'a pas de titre, de quantité ou de prix, afin qu'aucun devis incomplet ne parte.
 55. En tant que consultant, je veux qu'en cas de refus la page liste les manques et entoure les cases concernées en rouge, afin de corriger en quelques secondes.
 56. En tant que consultant, je veux qu'un prix à 0 € soit accepté, afin d'offrir une ligne.
 57. En tant que consultant, je veux que la page me signale les lignes encore « à relire » au moment du PDF, sans bloquer, afin d'être prévenu sans être freiné les soirs où je sais que c'est bon.

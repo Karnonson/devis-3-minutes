@@ -31,7 +31,7 @@ Le trajet et les PDF ont été rejoués sur la vraie adresse dans Chrome sans fe
 - 1-2. Le favori ouvre la liste, du plus récent au plus ancien (DEV-2026-021, 020, 019 Karma SAS « Envoyé ») — vu.
 - 3. « Dupliquer » sur DEV-2026-019 : DEV-2026-022 s'ouvre, daté du 06/10/2026, valable jusqu'au 05/11/2026, client vide, lignes, TVA 20 %, remise 10 % et acompte 30 % copiés, quatre lignes « à relire », coordonnées et conditions des réglages — vu (`captures/livraison-karma-signale.png`).
 - 4. « Karma » signalé en rouge dans le détail de la ligne 1, avec la note ; client tapé, ligne cochée, détail réécrit (plus de rouge), quantité changée, ligne « Support » supprimée après confirmation ; TTC 3 402,00 €, acompte 1 020,60 €, reste à payer 2 381,40 € — vu (`captures/livraison-karma-reecrit.png`).
-- 5. « Sortir le PDF » refusé : « Adresse du client » listé, case entourée en rouge, pas d'impression — vu (`captures/livraison-adresse-refusee.png`).
+- 5. « Exporter en PDF » refusé : « Adresse du client » listé, case entourée en rouge, pas d'impression — vu (`captures/livraison-adresse-refusee.png`).
 - 6. Second clic : « 1 ligne encore à relire — Ligne 3 : Suivi à un mois », impression ouverte avec le titre « DEV-2026-022 - Studio Lune » — vu (`captures/livraison-pdf-rappel.png`).
 - 7. Statut « Envoyé » dans la liste, gardé après rechargement, DEV-2026-019 inchangé — vu (`captures/livraison-liste-envoye.png`).
 

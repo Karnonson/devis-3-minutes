@@ -1,7 +1,7 @@
 // Contrôle automatique du PDF : ce que reçoit le prospect.
 // Lancer : node --test tests/pdf.js (environ 45 s). GARDER_PDF=<dossier> y garde les PDF sortis.
 // Part d'un profil Chrome neuf, remplit les réglages et des devis dans la page comme une personne, clique
-// « Sortir le PDF », puis fait imprimer la page en PDF par Chrome sans fenêtre (Page.printToPDF, en-têtes et
+// « Exporter en PDF », puis fait imprimer la page en PDF par Chrome sans fenêtre (Page.printToPDF, en-têtes et
 // pieds de page de Chrome demandés comme dans la fenêtre d'impression). Le PDF est lu par `pdftotext`
 // (poppler-utils, déjà présent sur l'ordinateur) : textes, pages et positions, rien d'autre.
 'use strict';
@@ -119,10 +119,10 @@ async function remplirDevis(numero, lignes, remise) {
   if (remise) await onglet.taper('#remise', remise);
 }
 
-// Clic sur « Sortir le PDF » (accepté, titre en place), puis impression en PDF par Chrome.
+// Clic sur « Exporter en PDF » (accepté, titre en place), puis impression en PDF par Chrome.
 async function sortirPdf(titre) {
   const avant = (await onglet.evaluer('window.__impressions')).length;
-  await onglet.cliquer('#sortir-pdf');
+  await onglet.cliquer('#exporter-pdf');
   assert.equal(await onglet.visible('#manques'), false, 'PDF accepté par la page');
   assert.deepEqual((await onglet.evaluer('window.__impressions')).slice(avant), [titre]);
   const { data } = await onglet.envoyer('Page.printToPDF', { preferCSSPageSize: true, displayHeaderFooter: true });

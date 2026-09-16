@@ -743,12 +743,12 @@ test('quantité et prix mal tapés : entourés en rouge, 0,5 accepté, 0, négat
   assert.deepEqual(onglet.erreurs, []);
 });
 
-test('« Sortir le PDF » refusé : la page liste les manques et entoure les cases en rouge ; complété, le PDF sort, statut inchangé', async () => {
+test('« Exporter en PDF » refusé : la page liste les manques et entoure les cases en rouge ; complété, le PDF sort, statut inchangé', async () => {
   // Sans aucune ligne ni client : refusé.
   onglet.dialogues.length = 0;
   await onglet.cliquer('#lignes .ligne:nth-child(1) [data-action="supprimer"]');
   await attendre(() => onglet.evaluer('document.querySelectorAll("#lignes .ligne").length === 0'), 'ligne supprimée');
-  await onglet.cliquer('#sortir-pdf');
+  await onglet.cliquer('#exporter-pdf');
   await onglet.attendreTexte('#manques', 'Le PDF n\'est pas sorti');
   assert.deepEqual(await manquesAffiches(onglet), ['Nom du client', 'Adresse du client', 'Au moins une ligne de prestation']);
   assert.deepEqual(await impressions(onglet), []);
@@ -769,7 +769,7 @@ test('« Sortir le PDF » refusé : la page liste les manques et entoure les cas
   await onglet.taper(ligneSaisie(2, 'quantite'), '1');
   await onglet.taper(ligneSaisie(2, 'prix'), '0');
   await onglet.taper('#remise', '150');
-  await onglet.cliquer('#sortir-pdf');
+  await onglet.cliquer('#exporter-pdf');
   assert.deepEqual(await manquesAffiches(onglet), ['Nom du client', 'Adresse du client', 'Ligne 1 : titre', 'Ligne 1 : quantité à corriger', 'Ligne 1 : prix', 'Remise à corriger']);
   for (const champ of ['titre', 'quantite', 'prix']) assert.equal(await estRouge(onglet, ligneSaisie(2, champ)), false, 'ligne 2 ' + champ);
   assert.deepEqual(await impressions(onglet), []);
@@ -795,7 +795,7 @@ test('« Sortir le PDF » refusé : la page liste les manques et entoure les cas
   // Complet, une ligne à 0,00 € comprise : le PDF sort avec « <numéro> - <client> ».
   assert.deepEqual((await onglet.evaluer(`[...document.querySelectorAll('#feuille .f-tableau tbody tr:nth-child(2) td')].map((td) => td.innerText.trim())`)).map(normal),
     ['Suivi à un mois', '1', '0,00 €', '0,00 €']);
-  await onglet.cliquer('#sortir-pdf');
+  await onglet.cliquer('#exporter-pdf');
   assert.deepEqual(await impressions(onglet), [`${num(26)} - Studio Lune`]);
   assert.deepEqual(await manquesAffiches(onglet), []);
   assert.deepEqual(onglet.dialogues, ['Supprimer la ligne 1 ?']);
@@ -813,12 +813,12 @@ test('« Sortir le PDF » refusé : la page liste les manques et entoure les cas
 // ---- Un devis de plusieurs pages, lisible en noir et blanc (tranche 07) ----
 // Le découpage des pages, le pied « <numéro> — page x/y » et le noir et blanc se vérifient dans le PDF : tests/pdf.js.
 
-test('« Sortir le PDF » : à l\'ouverture de l\'impression, le titre de la page est « <numéro> - <client> » du moment', async () => {
+test('« Exporter en PDF » : à l\'ouverture de l\'impression, le titre de la page est « <numéro> - <client> » du moment', async () => {
   await onglet.cliquer(`#liste-lignes a[href="#${num(26)}"]`);
   await onglet.attendreTexte('#devis-numero-barre', num(26));
   await onglet.taper('#client-nom', 'Atelier Soleil');
   const avant = (await ouvertures(onglet)).length;
-  await onglet.cliquer('#sortir-pdf');
+  await onglet.cliquer('#exporter-pdf');
   await attendre(async () => (await ouvertures(onglet)).length > avant, 'ouverture de l\'impression');
   assert.deepEqual((await ouvertures(onglet)).slice(avant), [`${num(26)} - Atelier Soleil`]);
   assert.equal(await onglet.visible('#manques'), false);
@@ -1193,10 +1193,10 @@ test('ligne cochée d\'un clic ou modifiée : plus « à relire » ; le repère 
   assert.deepEqual(onglet.erreurs, []);
 });
 
-test('« Sortir le PDF » avec des lignes encore à relire : la page le signale et le PDF sort quand même', async () => {
+test('« Exporter en PDF » avec des lignes encore à relire : la page le signale et le PDF sort quand même', async () => {
   // Adresse oubliée : refus, sans rappel « à relire » ni impression.
   await onglet.taper('#client-nom', 'Studio Lune');
-  await onglet.cliquer('#sortir-pdf');
+  await onglet.cliquer('#exporter-pdf');
   await onglet.attendreTexte('#manques', 'Le PDF n\'est pas sorti');
   assert.deepEqual(await manquesAffiches(onglet), ['Adresse du client']);
   assert.equal(await rappelAffiche(onglet), null);
@@ -1204,7 +1204,7 @@ test('« Sortir le PDF » avec des lignes encore à relire : la page le signale 
 
   // Adresse remplie : le PDF sort, et la page signale la ligne encore à relire.
   await onglet.taper('#client-adresse', '3 place du Marché\n35000 Rennes');
-  await onglet.cliquer('#sortir-pdf');
+  await onglet.cliquer('#exporter-pdf');
   await attendre(async () => (await impressions(onglet)).length === 1, 'impression malgré la ligne à relire');
   assert.deepEqual(await impressions(onglet), [`${num(6)} - Studio Lune`]);
   assert.deepEqual(await rappelAffiche(onglet), { titre: '1 ligne encore à relire', lignes: ['Ligne 3 : Suivi'] });
@@ -1217,7 +1217,7 @@ test('« Sortir le PDF » avec des lignes encore à relire : la page le signale 
   await attendre(async () => (await rappelAffiche(onglet)) === null, 'rappel retiré');
 
   // Plus rien à relire : le PDF sort sans rappel. Plusieurs lignes à relire : le rappel les compte.
-  await onglet.cliquer('#sortir-pdf');
+  await onglet.cliquer('#exporter-pdf');
   await attendre(async () => (await impressions(onglet)).length === 2, 'seconde impression');
   assert.equal(await rappelAffiche(onglet), null);
   await onglet.cliquer('#retour-liste');
@@ -1228,7 +1228,7 @@ test('« Sortir le PDF » avec des lignes encore à relire : la page le signale 
   await onglet.attendreTexte('#devis-numero-barre', num(7));
   await onglet.taper('#client-nom', 'Atelier Soleil');
   await onglet.taper('#client-adresse', '5 quai des Chartrons\n33000 Bordeaux');
-  await onglet.cliquer('#sortir-pdf');
+  await onglet.cliquer('#exporter-pdf');
   await attendre(async () => (await impressions(onglet)).length === 3, 'troisième impression');
   assert.deepEqual(await rappelAffiche(onglet), { titre: '3 lignes encore à relire',
     lignes: ['Ligne 1 : Atelier de cadrage', 'Ligne 2 : Maquettes', 'Ligne 3 : Suivi'] });
@@ -1316,7 +1316,7 @@ test('copie d\'un devis de Karma SAS : « Karma » signalé en rouge, quelle que
   await onglet.taper('#client-nom', 'Studio Lune');
   await onglet.taper('#client-adresse', '3 place du Marché\n35000 Rennes');
   const avant = (await impressions(onglet)).length;
-  await onglet.cliquer('#sortir-pdf');
+  await onglet.cliquer('#exporter-pdf');
   await attendre(async () => (await impressions(onglet)).length === avant + 1, 'PDF sorti malgré le nom signalé');
   assert.deepEqual((await impressions(onglet)).slice(avant), [`${num(8)} - Studio Lune`]);
   assert.deepEqual(await manquesAffiches(onglet), []);

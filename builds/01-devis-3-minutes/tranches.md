@@ -4,7 +4,7 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 
 ## 01 — Taper un devis et sortir son PDF
 
-**À construire :** le consultant ouvre la page, clique « Nouveau devis », tape un client et ses lignes à gauche (en ajouter, les remettre dans l'ordre, en supprimer une), voit à droite l'aperçu A4 se remplir à chaque frappe avec le total de chaque ligne, le total HT, une TVA fixe à 20 % et le total TTC, puis clique « Sortir le PDF » : la fenêtre d'impression de Chrome s'ouvre avec le bon nom de fichier. Rien n'est encore gardé : un rechargement repart de zéro, et le numéro affiché est toujours le premier de l'année.
+**À construire :** le consultant ouvre la page, clique « Nouveau devis », tape un client et ses lignes à gauche (en ajouter, les remettre dans l'ordre, en supprimer une), voit à droite l'aperçu A4 se remplir à chaque frappe avec le total de chaque ligne, le total HT, une TVA fixe à 20 % et le total TTC, puis clique « Exporter en PDF » : la fenêtre d'impression de Chrome s'ouvre avec le bon nom de fichier. Rien n'est encore gardé : un rechargement repart de zéro, et le numéro affiché est toujours le premier de l'année.
 **Bloqué par :** rien, peut démarrer.
 **Fait quand :**
 - [x] L'écran et l'aperçu ont l'allure de **Apparence** dans `spec.md` : net, calme, pro ; fond blanc, texte bleu nuit, un seul accent vert sapin pour les boutons et le total TTC ; police sans empattement sobre ; aucune image ni logo ; esprit facture Stripe.
@@ -17,7 +17,7 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 - [x] Les flèches haut et bas déplacent une ligne, et l'aperçu suit l'ordre. *(story 30)*
 - [x] Supprimer une ligne demande une confirmation ; refuser la confirmation garde la ligne. *(story 31)*
 - [x] Tous les montants s'affichent au format « 1 800,00 € ». *(story 39)*
-- [x] « Sortir le PDF » ouvre la fenêtre d'impression de Chrome, qui propose « DEV-2026-001 - Acme SARL.pdf », et on choisit soi-même le dossier. *(story 58)*
+- [x] « Exporter en PDF » ouvre la fenêtre d'impression de Chrome, qui propose « DEV-2026-001 - Acme SARL.pdf », et on choisit soi-même le dossier. *(story 58)*
 - [x] Le PDF enregistré est un A4 sobre et net, sans image ni logo, identique à l'aperçu. *(story 64)*
 - [x] Sur l'aperçu et le PDF, les coordonnées du client sont sous l'en-tête, à droite. *(story 66)*
 - [x] Le tableau a les colonnes Prestation, Qté, PU HT, Total HT, avec le titre en gras et le détail dessous. *(story 67)*
@@ -121,7 +121,7 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 - [x] Les totaux sont alignés à droite sur l'aperçu et le PDF, acompte et reste à payer compris. *(story 68)*
 
 **Choisi :**
-- La TVA se choisit sur trois boutons côte à côte « 20 % | 10 % | 0 % » dans un bloc « TVA, remise et acompte » sous les prestations ; le taux choisi est en bleu nuit, pour laisser le vert sapin au seul bouton « Sortir le PDF ».
+- La TVA se choisit sur trois boutons côte à côte « 20 % | 10 % | 0 % » dans un bloc « TVA, remise et acompte » sous les prestations ; le taux choisi est en bleu nuit, pour laisser le vert sapin au seul bouton « Exporter en PDF ».
 - Remise et acompte se tapent dans deux cases « Remise (%) » et « Acompte (%) », décimales à deux chiffres acceptées (« 12,5 »). Gardées telles que tapées, comme les quantités : hors de 0 à 100 ou illisible, la case est entourée en rouge avec « Un pourcentage de 0 à 100. » et compte pour 0 % ; une case vide compte pour 0 % sans rouge.
 - Les lignes de remise et d'acompte disparaissent selon le pourcentage tapé (0 %), pas selon le montant : sur un devis encore sans prix, « Remise 10 % −0,00 € » reste visible.
 - Sur l'aperçu : « Remise 10 % » avec son montant précédé d'un signe moins (« −225,00 € »), puis « Total HT après remise » ; « Acompte à la commande (30 %) » et « Reste à payer » (en demi-gras) sous le total, un peu détachés ; la mention « TVA non applicable, art. 293 B du CGI » en petit, alignée à droite, sous tout le bloc des totaux (voir `a-trancher.md`).
@@ -164,24 +164,24 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 
 ## 06 — Saisie contrôlée et PDF refusé s'il manque quelque chose
 
-**À construire :** une quantité ou un prix mal tapé est entouré en rouge. Quand le consultant clique « Sortir le PDF » avec un devis incomplet, la page refuse, liste ce qui manque et entoure les cases en rouge ; il complète et le PDF sort. Sortir le PDF ne touche jamais au statut.
+**À construire :** une quantité ou un prix mal tapé est entouré en rouge. Quand le consultant clique « Exporter en PDF » avec un devis incomplet, la page refuse, liste ce qui manque et entoure les cases en rouge ; il complète et le PDF sort. Exporter en PDF ne touche jamais au statut.
 **Bloqué par :** 02.
 **Fait quand :**
 - [x] Une quantité de 0,5 est acceptée ; 0, un nombre négatif ou 0,125 ne le sont pas. *(story 27)*
 - [x] Un prix négatif ou à trois décimales, ou une quantité refusée, est entouré en rouge et compte comme manquant. *(story 28)*
-- [x] « Sortir le PDF » est refusé sans nom ou adresse du client, sans aucune ligne, ou avec une ligne sans titre, quantité ou prix. *(story 54)*
+- [x] « Exporter en PDF » est refusé sans nom ou adresse du client, sans aucune ligne, ou avec une ligne sans titre, quantité ou prix. *(story 54)*
 - [x] En cas de refus, la page liste les manques et entoure les cases concernées en rouge ; une fois complétées, le PDF sort. *(story 55)*
 - [x] Une ligne à 0,00 € ne bloque pas le PDF. *(story 56)*
 - [x] Après la sortie du PDF, le statut du devis est inchangé dans la liste. *(story 59)*
 - [x] Le contrôle automatique de la page rejoue un PDF refusé, la liste des manques, puis le PDF accepté une fois complété.
 
 **Choisi :**
-- Une quantité (plus de 0, deux décimales au plus) ou un prix (0 ou plus, deux décimales au plus) mal tapé est entouré en rouge dès la frappe, avec sous la ligne « Quantité : plus de 0, deux décimales au plus. » ou « Prix : 0 ou plus, deux décimales au plus. » ; il reste tel que tapé et compte pour 0,00 € dans les totaux. Une case encore vide n'est pas rouge avant un clic sur « Sortir le PDF ».
+- Une quantité (plus de 0, deux décimales au plus) ou un prix (0 ou plus, deux décimales au plus) mal tapé est entouré en rouge dès la frappe, avec sous la ligne « Quantité : plus de 0, deux décimales au plus. » ou « Prix : 0 ou plus, deux décimales au plus. » ; il reste tel que tapé et compte pour 0,00 € dans les totaux. Une case encore vide n'est pas rouge avant un clic sur « Exporter en PDF ».
 - Au refus, un encadré « Le PDF n'est pas sorti. À compléter : » s'ouvre en haut de la saisie (qui remonte en haut), avec les manques dans l'ordre de la saisie : « Nom du client », « Adresse du client », « Au moins une ligne de prestation », « Ligne 2 : titre », « Ligne 2 : quantité », « Ligne 2 : prix à corriger »… Chaque manque est cliquable et met le curseur dans sa case. Sans aucune ligne, c'est le bouton « Ajouter une ligne » qui est bordé de rouge.
-- Après un refus, la liste et le rouge suivent chaque frappe (une ligne ajoutée apparaît aussitôt avec ses cases vides en rouge) ; l'encadré disparaît dès que tout est complet, et on reclique sur « Sortir le PDF ». Quitter le devis efface l'encadré ; rien n'est enregistré.
+- Après un refus, la liste et le rouge suivent chaque frappe (une ligne ajoutée apparaît aussitôt avec ses cases vides en rouge) ; l'encadré disparaît dès que tout est complet, et on reclique sur « Exporter en PDF ». Quitter le devis efface l'encadré ; rien n'est enregistré.
 - Une remise ou un acompte hors de 0 à 100, une validité hors de 1 à 365 jours ou une date incomplète bloquent aussi le PDF (« Remise à corriger »…) : toute case rouge du devis bloque (voir `a-trancher.md`).
 - Le titre proposé à l'impression est toujours « <numéro> - <client> » : le cas « numéro seul » de la tranche 01 ne peut plus arriver.
-- Ctrl+P ou le menu Imprimer de Chrome ne passent pas par ce contrôle : seul le bouton « Sortir le PDF » est vérifié.
+- Ctrl+P ou le menu Imprimer de Chrome ne passent pas par ce contrôle : seul le bouton « Exporter en PDF » est vérifié.
 - Le contrôle automatique voit l'impression par un témoin posé sur `window.print` (frontière entre la page et Chrome), qui relève le titre de la page à ce moment ; il rejoue aussi les quantités et prix refusés, la liste sans aucune ligne, une ligne ajoutée après le refus, un clic sur un manque et une remise refusée. Les calculs couvrent la lecture de la quantité et du prix (`node --test`). Essayés en plus à la main dans Chrome sans fenêtre : date effacée, validité 400 et acompte « abc » listés, puis PDF accepté.
 
 **Pour lancer :** `python3 -m http.server 8000` depuis le dossier du projet, puis ouvrir `http://localhost:8000` dans Chrome. Tests de calcul : `node --test`. Contrôle automatique de la page : `node --test tests/page.js` (environ 25 s).
@@ -201,7 +201,7 @@ Chaque tranche se construit et s'essaie sur l'ordinateur, page servie à `http:/
 - Le pied « DEV-2026-001 — page 1/2 » est écrit en bas à droite de chaque page, en petit gris (8 pt), dans la marge de page CSS `@bottom-right` que la tranche 01 laissait vide : la page y pose le numéro à l'ouverture du devis, Chrome compte les pages. Un devis d'une page porte « page 1/1 ». L'aperçu à l'écran, une seule feuille continue, ne montre ni pied ni coupure de page.
 - Totaux, mention art. 293 B, conditions et « Bon pour accord » forment un seul bloc qui ne se coupe jamais : s'il ne tient pas sous la dernière ligne du tableau, il passe entier sur la page suivante, qui commence alors par les totaux, sans en-tête de tableau puisqu'elle ne porte aucune ligne. Emmener aussi la dernière ligne avec les totaux (`break-before: avoid`) a été essayé : Chrome coupe alors le bloc dans certains devis. Des conditions plus longues qu'une page coupent forcément le bloc.
 - Le noir et blanc n'a rien demandé de plus : sans fond coloré, chaque texte de la feuille garde un contraste d'au moins 4,5:1 sur le blanc une fois passé en gris (le total TTC vert sapin 7,9:1), et le total reste en demi-gras, plus grand, sous un filet bleu nuit.
-- Le contrôle automatique du PDF est `tests/pdf.js`, lancé à part (`node --test tests/pdf.js`, environ 45 s). Il remplit réglages et devis dans la page par clics et frappes, clique « Sortir le PDF », puis fait imprimer la page en PDF par Chrome sans fenêtre (`Page.printToPDF`, avec les en-têtes et pieds de page de Chrome demandés, comme la case cochée par défaut de la fenêtre d'impression). Il lit le PDF avec `pdftotext` (poppler-utils, déjà installé sur l'ordinateur, rien d'ajouté) : pages, textes et positions. Quatre devis : court (1 page, exemple de référence), 12 lignes (2 pages, tableau sur les deux), 7 lignes (totaux qui tomberaient en bas de la page 1), 20 lignes (fin passée entière en page 3) ; plus le contraste de chaque texte imprimé. `GARDER_PDF=<dossier>` garde les PDF pour les regarder.
+- Le contrôle automatique du PDF est `tests/pdf.js`, lancé à part (`node --test tests/pdf.js`, environ 45 s). Il remplit réglages et devis dans la page par clics et frappes, clique « Exporter en PDF », puis fait imprimer la page en PDF par Chrome sans fenêtre (`Page.printToPDF`, avec les en-têtes et pieds de page de Chrome demandés, comme la case cochée par défaut de la fenêtre d'impression). Il lit le PDF avec `pdftotext` (poppler-utils, déjà installé sur l'ordinateur, rien d'ajouté) : pages, textes et positions. Quatre devis : court (1 page, exemple de référence), 12 lignes (2 pages, tableau sur les deux), 7 lignes (totaux qui tomberaient en bas de la page 1), 20 lignes (fin passée entière en page 3) ; plus le contraste de chaque texte imprimé. `GARDER_PDF=<dossier>` garde les PDF pour les regarder.
 - Le contrôle de la page relève le titre au moment où Chrome ouvre l'impression (événement `beforeprint`, témoin posé à la frontière) après avoir changé le nom du client : « DEV-2026-026 - Atelier Soleil ».
 - Essayé en plus dans la vraie fenêtre d'impression de Chrome (avec fenêtre, profil neuf, devis de 12 lignes) : aperçu « page 1/2 » puis « page 2/2 », aucun en-tête ni pied de Chrome alors que « En-têtes et pieds de page » est coché, et en « Noir et blanc » la page 2 reste lisible, total compris (captures `07-fenetre-impression.png`, `07-noir-et-blanc.png`). Des conditions de 90 lignes sortent sur 3 pages sans texte perdu.
 

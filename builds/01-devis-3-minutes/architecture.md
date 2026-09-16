@@ -35,7 +35,7 @@ La soirée du mardi 6 octobre 2026 : dupliquer un devis puis sortir le PDF.
 
    Elle l'enregistre dans **la mémoire de la page**, puis de nouveau à chaque frappe.
 4. Il tape le client, coche une ligne, réécrit le détail signalé en rouge parce qu'il contient « Karma », change une quantité et supprime une ligne après confirmation. **La page** recalcule en centimes et met l'aperçu A4 à jour à chaque frappe.
-5. Il clique **Sortir le PDF**. **La page** voit que l'adresse du client manque : elle refuse, liste le manque et entoure la case en rouge. Il la remplit.
+5. Il clique **Exporter en PDF**. **La page** voit que l'adresse du client manque : elle refuse, liste le manque et entoure la case en rouge. Il la remplit.
 6. Il clique de nouveau. **La page** signale les lignes encore à relire, s'il en reste, sans bloquer. Elle met le titre « DEV-2026-022 - Studio Lune » et ouvre **la fabrique du PDF** (fenêtre d'impression de Chrome). Il enregistre le fichier dans son dossier Devis.
 7. Il joint le PDF dans **sa messagerie** et l'envoie. De retour dans la liste, il passe le statut à « Envoyé ». **La page** l'enregistre dans **la mémoire de la page**.
 

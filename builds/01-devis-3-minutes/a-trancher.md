@@ -22,7 +22,7 @@
 
 ## 06 — Cases rouges hors client et lignes au moment du PDF
 
-**Question :** quand la remise, l'acompte, la validité ou la date du devis sont entourés en rouge (mal tapés), voulez-vous que « Sortir le PDF » refuse aussi, ou que le PDF sorte tel que l'aperçu le montre ?
+**Question :** quand la remise, l'acompte, la validité ou la date du devis sont entourés en rouge (mal tapés), voulez-vous que « Exporter en PDF » refuse aussi, ou que le PDF sorte tel que l'aperçu le montre ?
 **Choix :**
 - Refuser : toute case rouge du devis bloque le PDF et apparaît dans la liste des manques (« Remise à corriger »…).
 - Laisser sortir : seuls le client, les lignes, les quantités et les prix bloquent ; une remise ou un acompte refusé compte pour 0 %, une validité refusée n'imprime pas « Valable jusqu'au », une date incomplète garde la dernière date complète.
@@ -65,7 +65,7 @@
 **Choix :**
 - Un encadré en haut de la saisie qui liste les lignes, et la fenêtre d'impression s'ouvre aussitôt par-dessus.
 - Une boîte de Chrome « 2 lignes encore à relire » à fermer d'un clic avant que la fenêtre d'impression s'ouvre.
-- Un court message à côté du bouton « Sortir le PDF », sans la liste des lignes.
+- Un court message à côté du bouton « Exporter en PDF », sans la liste des lignes.
 **En attendant :** l'encadré en haut de la saisie, qui ne demande aucun clic de plus (capture `captures/09-pdf-rappel.png`). Passer à une boîte de Chrome est une ligne dans `app.js` et un passage du contrôle automatique, mais ajoute un clic chaque soir.
 **Réponse :** l'encadré en haut de la saisie, sans clic de plus — ce qui est en place.
 
