@@ -79,6 +79,10 @@ jobs:
               print(f'{r["revisionName"]} {r["url"]}' if r else "")
           PY
           echo "TRAFFIC=python3 $RUNNER_TEMP/traffic" >> "$GITHUB_ENV"
+          # The first call to Google. A refusal must stop here, saying so, not look like an empty service.
+          python3 "$RUNNER_TEMP/traffic" url > /dev/null 2> "$RUNNER_TEMP/refusal" || {
+            echo "::error::Google refused this run, or the service cannot be read: $(grep -m1 -o -E "Permission [^(]*denied|NOT_FOUND[^,]*|ERROR: [^:]*:[^:]*" "$RUNNER_TEMP/refusal" | head -c 200)"
+            exit 1; }
           echo "RUN=gcloud run services update-traffic $SERVICE --project $GCP_PROJECT --region $GCP_REGION --quiet" >> "$GITHUB_ENV"
 
       # ---------------------------------------------------------------- release
