@@ -1,0 +1,136 @@
+# Fleet's Cloud Run pipeline, copied once into this project (fleet: pipelines/cloud-run.md). This copy is the
+# project's own. A pull request that is ready for review is put online at its own address, built from the
+# pull request merged into main; a new commit replaces it at the same address; closing or merging removes it.
+# No preview for a draft, for a change to documentation only, or for a pull request from another copy of the
+# repository.
+name: Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, closed]
+    paths-ignore: ["**.md"]
+
+# Reading the code, asking Google for a short-lived identity, and writing the comment. Nothing else.
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+# One run per pull request: a newer commit, or the close, replaces a run still going.
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  PR: ${{ github.event.pull_request.number }}
+  HEAD: ${{ github.event.pull_request.head.sha }}
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  preview:
+    name: ${{ github.event.action == 'closed' && 'remove' || 'put online' }}
+    # Another copy of the repository gets no identity from Google anyway; this says so sooner.
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository
+      && (github.event.action == 'closed' || !github.event.pull_request.draft)
+    runs-on: ${{ vars.PIPELINE_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    steps:
+      # A pull request checks out its merge into main: the preview shows what main would become.
+      - name: Check out the pull request merged into main
+        if: github.event.action != 'closed'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # A closed pull request has no merge to check out: the settings are read from main.
+      - name: Check out main
+        if: github.event.action == 'closed'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+
+      - name: Read the settings
+        run: |
+          grep -E '^[A-Z_]+=' .github/pipeline.env >> "$GITHUB_ENV"
+          . .github/pipeline.env
+          echo "ON=--project $PREVIEW_PROJECT --region $GCP_REGION" >> "$GITHUB_ENV"
+          echo "STORE=$GCP_REGION-docker.pkg.dev/$PREVIEW_PROJECT/$PREVIEW_IMAGE_STORE/$PREVIEW_SERVICE" >> "$GITHUB_ENV"
+
+      - name: Get a short-lived identity from Google
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.PREVIEW_WIF_PROVIDER }}
+          service_account: ${{ env.PREVIEW_IDENTITY }}
+
+      # The first call to Google. A refusal must stop here, saying so.
+      - name: Read where the previews stand
+        run: |
+          gcloud run services describe "$PREVIEW_SERVICE" $ON --format 'value(status.url)' > /dev/null 2> "$RUNNER_TEMP/refusal" || {
+            echo "::error::Google refused this run, or the preview service cannot be read: $(head -c 300 "$RUNNER_TEMP/refusal")"
+            exit 1; }
+
+      # ------------------------------------------------------------- put online
+      - name: Build and store the image
+        if: github.event.action != 'closed'
+        run: |
+          gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
+          docker build --build-arg "COMMIT=$HEAD" --tag "$STORE:pr-$PR-$HEAD" .
+          docker push "$STORE:pr-$PR-$HEAD"
+
+      - name: Put it online at the pull request's address
+        if: github.event.action != 'closed'
+        run: |
+          gcloud run deploy "$PREVIEW_SERVICE" $ON --image "$STORE:pr-$PR-$HEAD" \
+            --service-account "$PREVIEW_RUN_IDENTITY" --memory "$MEMORY" --max-instances "$MAX_INSTANCES" \
+            --min-instances 0 --revision-suffix "pr-$PR-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
+            --no-traffic --tag "pr-$PR" --quiet
+
+      - name: Check it, and say where it is
+        if: github.event.action != 'closed'
+        run: |
+          ADDRESS="$(gcloud run services describe "$PREVIEW_SERVICE" $ON --format json | python3 -c "
+          import json, sys, os
+          print(next(t['url'] for t in json.load(sys.stdin)['status']['traffic'] if t.get('tag') == 'pr-' + os.environ['PR']))")"
+          fail=""
+          seen="$(curl --silent --show-error --fail --max-time 30 --retry 3 "$ADDRESS$VERSION_PATH" || true)"
+          case "$seen" in *"$HEAD"*) ;; *) fail="$fail $VERSION_PATH does not name $HEAD." ;; esac
+          for path in $CHECK_PATHS; do
+            code="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 30 --retry 3 "$ADDRESS$path" || true)"
+            [ "$code" = "200" ] || fail="$fail $path answered $code."
+          done
+          if [ -n "$fail" ]; then echo "::error::The preview is online but its check failed:$fail"; exit 1; fi
+          echo "ADDRESS=$ADDRESS" >> "$GITHUB_ENV"
+          say="**Preview:** $ADDRESS — this pull request merged into main, at commit \`${HEAD:0:12}\`. It is removed when the pull request closes."
+          gh pr comment "$PR" --edit-last --body "$say" 2>/dev/null || gh pr comment "$PR" --body "$say"
+
+      - name: Say that the preview failed
+        if: failure() && github.event.action != 'closed'
+        run: |
+          say="**Preview: failed** for commit \`${HEAD:0:12}\`. The log: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          gh pr comment "$PR" --edit-last --body "$say" 2>/dev/null || gh pr comment "$PR" --body "$say"
+
+      # ---------------------------------------- remove, or tidy after a new commit
+      # After a new commit: every release of this pull request but the one just put online.
+      # After the close: all of them, and the address.
+      - name: Remove what this pull request no longer needs
+        if: success()
+        run: |
+          KEEP=""
+          if [ "$GITHUB_EVENT_ACTION" = "closed" ]; then
+            gcloud run services update-traffic "$PREVIEW_SERVICE" $ON --remove-tags "pr-$PR" --quiet 2>/dev/null || true
+          else
+            KEEP="pr-$PR-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          fi
+          for revision in $(gcloud run revisions list --service "$PREVIEW_SERVICE" $ON --format 'value(metadata.name)' | grep -- "-pr-$PR-" || true); do
+            [ -n "$KEEP" ] && [ "$revision" = "$PREVIEW_SERVICE-$KEEP" ] && continue
+            gcloud run revisions delete "$revision" $ON --quiet || true
+          done
+          for tag in $(gcloud artifacts docker tags list "$STORE" --format 'value(tag)' 2>/dev/null | grep -- "^pr-$PR-" || true); do
+            [ -n "$KEEP" ] && [ "$tag" = "pr-$PR-$HEAD" ] && continue
+            gcloud artifacts docker images delete "$STORE:$tag" --delete-tags --quiet || true
+          done
+          if [ "$GITHUB_EVENT_ACTION" = "closed" ]; then
+            gh pr comment "$PR" --edit-last --body "**Preview: removed**, with its images." 2>/dev/null || true
+          fi
+        env:
+          GITHUB_EVENT_ACTION: ${{ github.event.action }}
