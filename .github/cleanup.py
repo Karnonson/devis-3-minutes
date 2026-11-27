@@ -46,6 +46,9 @@ def remove(what, *args):
         say(f"- would remove {what}")
         return True
     done = gcloud(*args, "--quiet", check=False)
+    if done.returncode and "cannot be directly deleted" in done.stderr:
+        say(f"- left {what} for a later night: Cloud Run keeps a service's newest revision")
+        return False
     if done.returncode:
         say(f"- left {what}: {done.stderr.strip().splitlines()[-1][:160] if done.stderr.strip() else 'refused'}")
         return False
