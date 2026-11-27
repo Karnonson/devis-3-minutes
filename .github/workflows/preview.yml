@@ -52,7 +52,10 @@ jobs:
       - name: Read the settings
         run: |
           grep -E '^[A-Z_]+=' .github/pipeline.env >> "$GITHUB_ENV"
-          . .github/pipeline.env
+
+      # The settings are in the environment from here on; the file is never run as a script.
+      - name: Work out where the previews live
+        run: |
           echo "ON=--project $PREVIEW_PROJECT --region $GCP_REGION" >> "$GITHUB_ENV"
           echo "STORE=$GCP_REGION-docker.pkg.dev/$PREVIEW_PROJECT/$PREVIEW_IMAGE_STORE/$PREVIEW_SERVICE" >> "$GITHUB_ENV"
 
