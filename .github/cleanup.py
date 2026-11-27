@@ -128,7 +128,7 @@ def released():
         if name not in needed and digest_of.get(name) not in there:
             gone += remove(f"revision {name}", "run", "revisions", "delete", name, *on)
     say(f"\nKept the newest {keep_count} images, and what visitors or a label need: {len(there)} stored pieces. "
-        f"Removed {removed} pieces and {gone} revisions.")
+        f"{'Would remove' if DRY else 'Removed'} {removed} pieces and {gone} revisions.")
 
 
 def previews():
@@ -175,7 +175,7 @@ def previews():
     keep = {(r["status"].get("imageDigest") or "").rpartition("@")[2] for r in revisions if r["metadata"]["name"] in needed}
     there, removed = sweep_images(store, keep - {""})
     say(f"\n{len(online)} previews online, {len(there)} stored pieces kept. "
-        f"Removed {removed} pieces and {gone} revisions.")
+        f"{'Would remove' if DRY else 'Removed'} {removed} pieces and {gone} revisions.")
 
 
 if __name__ == "__main__":
