@@ -1,0 +1,167 @@
+# Fleet's Cloud Run pipeline, copied once into this project (fleet: pipelines/cloud-run.md). This copy is the
+# project's own. Three actions, one run at a time:
+#   release  builds a commit of main, puts it online where no visitor reaches it, checks it, and stops
+#   open     sends the visitors to the release that was checked
+#   go-back  sends the visitors back to the release that served before
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: release, open or go-back
+        type: choice
+        options: [release, open, go-back]
+        default: release
+      commit:
+        description: "release only: the commit of main to release (empty: the newest)"
+        type: string
+        default: ""
+
+# Reading the code, and asking Google for a short-lived identity. Nothing else.
+permissions:
+  contents: read
+  id-token: write
+
+# A second run waits for the first: releases never interleave.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  run:
+    name: ${{ inputs.action }}
+    # Google refuses any other branch too (setup.sh); this only says so sooner.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ${{ vars.PIPELINE_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    steps:
+      - name: Check out the commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.commit || github.sha }}
+
+      - name: Read the settings
+        run: |
+          grep -E '^[A-Z_]+=' .github/pipeline.env >> "$GITHUB_ENV"
+          echo "COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      # The commit must be on main: a release is never built from a branch.
+      - name: Refuse a commit that is not on main
+        if: inputs.action == 'release'
+        run: |
+          git fetch --quiet origin main
+          git merge-base --is-ancestor "$COMMIT" origin/main \
+            || { echo "::error::$COMMIT is not on main."; exit 1; }
+
+      - name: Get a short-lived identity from Google
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.RELEASE_IDENTITY }}
+
+      # Prints "<label> <revision> <percent> <address>" for each line of the service's traffic.
+      - name: Read where the service stands
+        run: |
+          cat > "$RUNNER_TEMP/traffic" <<'PY'
+          import json, subprocess, sys, os
+          e = os.environ
+          s = json.loads(subprocess.check_output(["gcloud", "run", "services", "describe", e["SERVICE"],
+              "--project", e["GCP_PROJECT"], "--region", e["GCP_REGION"], "--format", "json"]))
+          rows = s["status"].get("traffic", [])
+          want = sys.argv[1]
+          if want == "url":
+              print(s["status"]["url"])
+          elif want == "serving":
+              print(next((r["revisionName"] for r in rows if r.get("percent") == 100), ""))
+          else:
+              r = next((r for r in rows if r.get("tag") == want), None)
+              print(f'{r["revisionName"]} {r["url"]}' if r else "")
+          PY
+          echo "TRAFFIC=python3 $RUNNER_TEMP/traffic" >> "$GITHUB_ENV"
+          echo "RUN=gcloud run services update-traffic $SERVICE --project $GCP_PROJECT --region $GCP_REGION --quiet" >> "$GITHUB_ENV"
+
+      # ---------------------------------------------------------------- release
+      - name: Build and store the image
+        if: inputs.action == 'release'
+        run: |
+          IMAGE="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT/$IMAGE_STORE/$SERVICE:$COMMIT"
+          gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
+          docker build --build-arg "COMMIT=$COMMIT" --tag "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Put it online with no visitor
+        if: inputs.action == 'release'
+        run: |
+          # An old pass must not open a new, unchecked release.
+          $RUN --remove-tags checked 2>/dev/null || true
+          gcloud run deploy "$SERVICE" --project "$GCP_PROJECT" --region "$GCP_REGION" \
+            --image "$IMAGE" --service-account "$RUN_IDENTITY" \
+            --memory "$MEMORY" --max-instances "$MAX_INSTANCES" --min-instances 0 \
+            --no-traffic --tag candidate --quiet
+
+      - name: Check it at its own address
+        if: inputs.action == 'release'
+        run: |
+          read -r REVISION ADDRESS <<< "$($TRAFFIC candidate)"
+          [ -n "$REVISION" ] || { echo "::error::No candidate release was found."; exit 1; }
+          fail=""
+          seen="$(curl --silent --show-error --fail --max-time 30 --retry 3 "$ADDRESS$VERSION_PATH" || true)"
+          case "$seen" in *"$COMMIT"*) ;; *) fail="$fail $VERSION_PATH does not name $COMMIT (it says: ${seen:0:80})." ;; esac
+          for path in $CHECK_PATHS; do
+            code="$(curl --silent --output /dev/null --write-out '%{http_code}' --max-time 30 --retry 3 "$ADDRESS$path" || true)"
+            [ "$code" = "200" ] || fail="$fail $path answered $code."
+          done
+          {
+            echo "## Release of \`${COMMIT:0:12}\`"
+            echo "- Started by: $GITHUB_ACTOR"
+            echo "- Its own address: $ADDRESS"
+            echo "- Revision: \`$REVISION\`"
+            echo "- Serving the visitors: \`$($TRAFFIC serving)\` (unchanged)"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$fail" ]; then
+            echo "- **Check: failed.**$fail The visitors are not affected. \`open\` will refuse." >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Check failed:$fail"; exit 1
+          fi
+          $RUN --update-tags "checked=$REVISION"
+          echo "- **Check: passed.** Run \`open\` to send the visitors to it." >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------------- open
+      - name: Send the visitors to the checked release
+        if: inputs.action == 'open'
+        run: |
+          read -r CHECKED _ <<< "$($TRAFFIC checked)"
+          read -r CANDIDATE _ <<< "$($TRAFFIC candidate)"
+          [ -n "$CHECKED" ] || { echo "::error::No release passed its check. Run release first."; exit 1; }
+          [ "$CHECKED" = "$CANDIDATE" ] || { echo "::error::The checked release is not the last one built."; exit 1; }
+          SERVING="$($TRAFFIC serving)"
+          [ "$SERVING" != "$CHECKED" ] || { echo "::error::$CHECKED already serves the visitors."; exit 1; }
+          $RUN --to-revisions "$CHECKED=100"
+          $RUN --remove-tags checked
+          [ -z "$SERVING" ] || $RUN --update-tags "previous=$SERVING"
+          {
+            echo "## Opened"
+            echo "- Started by: $GITHUB_ACTOR"
+            echo "- Serving the visitors: \`$CHECKED\`, at $($TRAFFIC url)"
+            echo "- Before it: \`${SERVING:-nothing}\`. Run \`go-back\` to return to it."
+            echo "- $VERSION_PATH now says: \`$(curl --silent --max-time 30 --retry 3 "$($TRAFFIC url)$VERSION_PATH" | head -c 80)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # ---------------------------------------------------------------- go-back
+      - name: Send the visitors back to the release before
+        if: inputs.action == 'go-back'
+        run: |
+          read -r PREVIOUS _ <<< "$($TRAFFIC previous)"
+          [ -n "$PREVIOUS" ] || { echo "::error::There is no earlier release to go back to. Nothing changed."; exit 1; }
+          SERVING="$($TRAFFIC serving)"
+          $RUN --to-revisions "$PREVIOUS=100"
+          $RUN --remove-tags previous
+          $RUN --remove-tags checked 2>/dev/null || true
+          {
+            echo "## Went back"
+            echo "- Started by: $GITHUB_ACTOR"
+            echo "- Serving the visitors: \`$PREVIOUS\`, at $($TRAFFIC url)"
+            echo "- Left: \`$SERVING\`"
+            echo "- $VERSION_PATH now says: \`$(curl --silent --max-time 30 --retry 3 "$($TRAFFIC url)$VERSION_PATH" | head -c 80)\`"
+          } >> "$GITHUB_STEP_SUMMARY"
