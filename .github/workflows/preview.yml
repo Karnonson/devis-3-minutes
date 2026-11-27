@@ -77,7 +77,7 @@ jobs:
         if: github.event.action != 'closed'
         run: |
           gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
-          docker build --build-arg "COMMIT=$HEAD" --tag "$STORE:pr-$PR-$HEAD" .
+          docker build --provenance=false --build-arg "COMMIT=$HEAD" --tag "$STORE:pr-$PR-$HEAD" .
           docker push "$STORE:pr-$PR-$HEAD"
 
       - name: Put it online at the pull request's address

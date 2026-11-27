@@ -1,0 +1,77 @@
+# Fleet's Cloud Run pipeline, copied once into this project (fleet: pipelines/cloud-run.md). This copy is the
+# project's own. Every night it removes what nothing needs any more:
+#   - of the released service: the images beyond the newest KEEP_IMAGES, and the revisions that ran them.
+#     What visitors are on, and what `candidate`, `checked` or `previous` point to, is never removed.
+#   - of the previews: the address of a pull request that is closed, or that got no commit for PREVIEW_DAYS
+#     days; then every revision and image no address points to.
+# Run it by hand with "dry run" to see what it would remove, and remove nothing.
+name: Cleanup
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only list what would be removed"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+  pull-requests: write
+
+env:
+  DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  released:
+    name: released service
+    if: github.ref == 'refs/heads/main'
+    runs-on: ${{ vars.PIPELINE_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 15
+    # Never while a release, an open or a go-back is running: it waits its turn.
+    concurrency:
+      group: release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read the settings
+        run: |
+          grep -E '^[A-Z_]+=' .github/pipeline.env >> "$GITHUB_ENV"
+
+      - name: Get a short-lived identity from Google
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.RELEASE_IDENTITY }}
+
+      - name: Remove old images and revisions
+        run: python3 .github/cleanup.py released
+
+  previews:
+    name: previews
+    if: github.ref == 'refs/heads/main'
+    runs-on: ${{ vars.PIPELINE_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read the settings
+        run: |
+          grep -E '^[A-Z_]+=' .github/pipeline.env >> "$GITHUB_ENV"
+
+      - name: Get a short-lived identity from Google
+        if: env.PREVIEW_SERVICE != ''
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ env.PREVIEW_WIF_PROVIDER }}
+          service_account: ${{ env.PREVIEW_IDENTITY }}
+
+      - name: Remove forgotten previews
+        if: env.PREVIEW_SERVICE != ''
+        run: python3 .github/cleanup.py previews

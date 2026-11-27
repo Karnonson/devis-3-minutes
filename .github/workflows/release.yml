@@ -91,7 +91,7 @@ jobs:
         run: |
           IMAGE="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT/$IMAGE_STORE/$SERVICE:$COMMIT"
           gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
-          docker build --build-arg "COMMIT=$COMMIT" --tag "$IMAGE" .
+          docker build --provenance=false --build-arg "COMMIT=$COMMIT" --tag "$IMAGE" .
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
 
