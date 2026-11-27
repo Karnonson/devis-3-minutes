@@ -113,8 +113,8 @@ jobs:
           gh pr comment "$PR" --edit-last --body "$say" 2>/dev/null || gh pr comment "$PR" --body "$say"
 
       # ---------------------------------------- remove, or tidy after a new commit
-      # After a new commit: every release of this pull request but the one just put online.
-      # After the close: all of them, and the address.
+      # After a new commit: this pull request's older images. After the close: its address and all its images.
+      # Either way: the revisions no address points to.
       - name: Remove what this pull request no longer needs
         if: success()
         run: |
@@ -124,9 +124,14 @@ jobs:
           else
             KEEP="pr-$PR-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
           fi
-          for revision in $(gcloud run revisions list --service "$PREVIEW_SERVICE" $ON --format 'value(metadata.name)' | grep -- "-pr-$PR-" || true); do
-            [ -n "$KEEP" ] && [ "$revision" = "$PREVIEW_SERVICE-$KEEP" ] && continue
-            gcloud run revisions delete "$revision" $ON --quiet || true
+          # Every preview revision no address points to, of any pull request. Cloud Run refuses to delete the
+          # newest revision of a service: that one is left, and goes at the next run.
+          TAGGED="$(gcloud run services describe "$PREVIEW_SERVICE" $ON --format json | python3 -c "
+          import json, sys
+          print(' '.join(t['revisionName'] for t in json.load(sys.stdin)['status']['traffic'] if t.get('tag')))")"
+          for revision in $(gcloud run revisions list --service "$PREVIEW_SERVICE" $ON --format 'value(metadata.name)' | grep -- "-pr-" || true); do
+            case " $TAGGED " in *" $revision "*) continue ;; esac
+            gcloud run revisions delete "$revision" $ON --quiet 2>/dev/null || echo "Left for the next run: $revision"
           done
           for tag in $(gcloud artifacts docker tags list "$STORE" --format 'value(tag)' 2>/dev/null | grep -- "^pr-$PR-" || true); do
             [ -n "$KEEP" ] && [ "$tag" = "pr-$PR-$HEAD" ] && continue
