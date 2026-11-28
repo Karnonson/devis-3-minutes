@@ -100,8 +100,8 @@ jobs:
             name="${line%%=*}"; sets="$sets@@${name#PREVIEW_SET_}=$(fill "$line")"
           done < <(env | grep -E '^PREVIEW_SET_[A-Z0-9_]+=' || true)
           for pair in $PREVIEW_READS; do refs="$refs,${pair%%=*}=${pair#*=}:latest"; done
-          [ -z "$sets" ] || extra+=(--update-env-vars "^@@^${sets#@@}")
-          [ -z "$refs" ] || extra+=(--update-secrets "${refs#,}")
+          [ -z "$sets" ] || extra+=(--set-env-vars "^@@^${sets#@@}")
+          [ -z "$refs" ] || extra+=(--set-secrets "${refs#,}")
           gcloud run deploy "$PREVIEW_SERVICE" $ON --image "$STORE:pr-$PR-$HEAD" \
             --service-account "$PREVIEW_RUN_IDENTITY" --memory "$MEMORY" --max-instances "$MAX_INSTANCES" \
             --min-instances 0 --revision-suffix "pr-$PR-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
