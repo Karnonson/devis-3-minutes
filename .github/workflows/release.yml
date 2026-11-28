@@ -6,6 +6,8 @@
 #   where    says which commit the visitors are on, and what is waiting
 # Each run ends with one line starting "PIPELINE:" that says where the service stands.
 name: Release
+# The run is named after its action: the watch reads these names to know when a release was last opened.
+run-name: ${{ inputs.action }}${{ inputs.commit && format(' {0}', inputs.commit) || '' }}
 
 on:
   workflow_dispatch:
@@ -20,10 +22,16 @@ on:
         type: string
         default: ""
 
-# Reading the code, and asking Google for a short-lived identity. Nothing else.
+# Reading the code, asking Google for a short-lived identity, and writing an issue when a release that was
+# just opened fails. Nothing else.
 permissions:
   contents: read
   id-token: write
+  issues: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
 
 # A second run waits for the first: releases never interleave.
 concurrency:
@@ -210,6 +218,30 @@ jobs:
             echo "- Before it: \`${SERVING:-nothing}\`. Run \`go-back\` to return to it."
             echo "- $VERSION_PATH now says: \`$(curl --silent --max-time 30 --retry 3 "$($TRAFFIC url)$VERSION_PATH" | head -c 80)\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # A release that passed its check can still fail with the real visitors on it. It is watched for
+      # WATCH_MINUTES. Failing twice in a row, the visitors go back by themselves and an issue says so.
+      - name: Watch it with the visitors on it, and go back if it fails
+        if: inputs.action == 'open'
+        run: |
+          export SERVICE_ADDRESS="$($TRAFFIC url)"
+          bad="$(python3 .github/watch.py after-open)" && {
+            echo "- Watched for ${WATCH_MINUTES:-5} minutes with the visitors on it: nothing failed." >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+          read -r PREVIOUS _ <<< "$($TRAFFIC previous)"
+          SERVING="$($TRAFFIC serving)"
+          if [ -n "$PREVIOUS" ]; then
+            $RUN --to-revisions "$PREVIOUS=100"
+            $RUN --remove-tags previous
+            $RUN --remove-tags checked 2>/dev/null || true
+            did="The visitors were sent back to the release before (\`$PREVIOUS\`). The release that failed is \`$SERVING\`."
+            python3 .github/watch.py alert went-back "The release that was just opened failed with the visitors on it: $bad. $did"
+          else
+            did="There was no earlier release to go back to: the visitors are still on \`$SERVING\`."
+            python3 .github/watch.py alert still-down "The release that was just opened failed with the visitors on it: $bad. $did"
+          fi
+          echo "- **Failed with the visitors on it:** $bad. $did" >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::The opened release failed with the visitors on it: $bad. $did"
+          exit 1
 
       # ---------------------------------------------------------------- go-back
       - name: Send the visitors back to the release before

@@ -1,0 +1,46 @@
+# Fleet's Cloud Run pipeline, copied once into this project (fleet: pipelines/cloud-run.md). This copy is the
+# project's own. Every ten minutes it reads the site from outside, like a visitor, and holds no key.
+#   - Failing twice in a row, one minute apart: it opens one issue. While the failure lasts it adds nothing.
+#   - A release was opened lately (GO_BACK_WITHIN_MINUTES): it also starts the way back.
+#   - Answering again: it says so, and closes the issue unless a release is still to fix.
+# GitHub starts a timer late when it is busy, and stops it in a repository with no activity for 60 days.
+name: Watch
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+# Reading the settings, writing an issue, and starting the way back. Nothing else, and nothing of Google's.
+permissions:
+  contents: read
+  issues: write
+  actions: write
+
+concurrency:
+  group: watch
+  cancel-in-progress: false
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  watch:
+    name: is the site answering
+    if: github.ref == 'refs/heads/main'
+    runs-on: ${{ vars.PIPELINE_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Read the settings
+        run: |
+          grep -E '^[A-Z][A-Z0-9_]*=' .github/pipeline.env >> "$GITHUB_ENV"
+
+      - name: Look for the tools
+        run: |
+          command -v gh >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq gh; }
+
+      - name: Read the site, and say so when it fails
+        run: python3 .github/watch.py scheduled
