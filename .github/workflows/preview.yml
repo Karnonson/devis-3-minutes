@@ -105,7 +105,10 @@ jobs:
           gcloud run deploy "$PREVIEW_SERVICE" $ON --image "$STORE:pr-$PR-$HEAD" \
             --service-account "$PREVIEW_RUN_IDENTITY" --memory "$MEMORY" --max-instances "$MAX_INSTANCES" \
             --min-instances 0 --revision-suffix "pr-$PR-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
-            "${extra[@]}" --no-traffic --tag "pr-$PR" --quiet
+            "${extra[@]}" --no-traffic --tag "pr-$PR" --quiet 2> "$RUNNER_TEMP/deploy.err" || {
+            cat "$RUNNER_TEMP/deploy.err" >&2
+            echo "::error::The preview could not be put online: $(grep -m1 '^ERROR' "$RUNNER_TEMP/deploy.err" | head -c 400)"
+            exit 1; }
 
       - name: Check it, and say where it is
         if: github.event.action != 'closed'

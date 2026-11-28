@@ -124,7 +124,10 @@ jobs:
           gcloud run deploy "$SERVICE" --project "$GCP_PROJECT" --region "$GCP_REGION" \
             --image "$IMAGE" --service-account "$RUN_IDENTITY" \
             --memory "$MEMORY" --max-instances "$MAX_INSTANCES" --min-instances 0 \
-            "${extra[@]}" --no-traffic --tag candidate --quiet
+            "${extra[@]}" --no-traffic --tag candidate --quiet 2> "$RUNNER_TEMP/deploy.err" || {
+            cat "$RUNNER_TEMP/deploy.err" >&2
+            echo "::error::The release could not be put online: $(grep -m1 '^ERROR' "$RUNNER_TEMP/deploy.err" | head -c 400)"
+            exit 1; }
 
       - name: Check it at its own address
         if: inputs.action == 'release'
