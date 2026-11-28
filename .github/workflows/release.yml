@@ -229,14 +229,17 @@ jobs:
             echo "- Watched for ${WATCH_MINUTES:-5} minutes with the visitors on it: nothing failed." >> "$GITHUB_STEP_SUMMARY"; exit 0; }
           read -r PREVIOUS _ <<< "$($TRAFFIC previous)"
           SERVING="$($TRAFFIC serving)"
+          # The image of a release is named after its commit.
+          IMAGE="$(gcloud run revisions describe "$SERVING" --project "$GCP_PROJECT" --region "$GCP_REGION" --format 'value(spec.containers[0].image)' 2>/dev/null)"
+          SERVING="$SERVING, commit ${IMAGE##*:}"
           if [ -n "$PREVIOUS" ]; then
             $RUN --to-revisions "$PREVIOUS=100"
             $RUN --remove-tags previous
             $RUN --remove-tags checked 2>/dev/null || true
-            did="The visitors were sent back to the release before (\`$PREVIOUS\`). The release that failed is \`$SERVING\`."
+            did="The visitors were sent back to the release before (\`$PREVIOUS\`). The release that failed is $SERVING."
             python3 .github/watch.py alert went-back "The release that was just opened failed with the visitors on it: $bad. $did"
           else
-            did="There was no earlier release to go back to: the visitors are still on \`$SERVING\`."
+            did="There was no earlier release to go back to: the visitors are still on $SERVING."
             python3 .github/watch.py alert still-down "The release that was just opened failed with the visitors on it: $bad. $did"
           fi
           echo "- **Failed with the visitors on it:** $bad. $did" >> "$GITHUB_STEP_SUMMARY"
