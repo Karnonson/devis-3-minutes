@@ -72,6 +72,23 @@ jobs:
         if: env.HAVE_GCLOUD != '1'
         uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
 
+      # What the project keeps out of its repository (a key every browser receives, an address, an id) is
+      # more BUILD_ and SET_ lines, held as one secret of Secret Manager. They join the others here, and
+      # this log hides their values.
+      - name: Read the settings kept out of the repository
+        if: inputs.action == 'release' && env.PRIVATE_SETTINGS != ''
+        run: |
+          gcloud secrets versions access latest --secret "$PRIVATE_SETTINGS" --project "$GCP_PROJECT" > "$RUNNER_TEMP/private" 2> "$RUNNER_TEMP/private.err" || {
+            echo "::error::The settings kept out of the repository cannot be read ($PRIVATE_SETTINGS): $(grep -m1 '^ERROR' "$RUNNER_TEMP/private.err" | head -c 300)"
+            exit 1; }
+          grep -E '^(BUILD|SET)_[A-Z0-9_]+=' "$RUNNER_TEMP/private" > "$RUNNER_TEMP/lines" || true
+          rm -f "$RUNNER_TEMP/private"
+          while IFS= read -r line; do
+            [ -z "${line#*=}" ] || echo "::add-mask::${line#*=}"
+          done < "$RUNNER_TEMP/lines"
+          sed -E 's/^//' "$RUNNER_TEMP/lines" >> "$GITHUB_ENV"
+          rm -f "$RUNNER_TEMP/lines"
+
       # Prints "<label> <revision> <percent> <address>" for each line of the service's traffic.
       - name: Read where the service stands
         run: |
