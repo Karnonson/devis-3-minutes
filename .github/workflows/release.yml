@@ -1,17 +1,19 @@
 # Fleet's Cloud Run pipeline, copied once into this project (fleet: pipelines/cloud-run.md). This copy is the
-# project's own. Three actions, one run at a time:
+# project's own. Three actions, one run at a time, and `where`, which changes nothing:
 #   release  builds a commit of main, puts it online where no visitor reaches it, checks it, and stops
 #   open     sends the visitors to the release that was checked
 #   go-back  sends the visitors back to the release that served before
+#   where    says which commit the visitors are on, and what is waiting
+# Each run ends with one line starting "PIPELINE:" that says where the service stands.
 name: Release
 
 on:
   workflow_dispatch:
     inputs:
       action:
-        description: release, open or go-back
+        description: release, open, go-back, or where (changes nothing)
         type: choice
-        options: [release, open, go-back]
+        options: [release, open, go-back, where]
         default: release
       commit:
         description: "release only: the commit of main to release (empty: the newest)"
@@ -169,3 +171,14 @@ jobs:
             echo "- Left: \`$SERVING\`"
             echo "- $VERSION_PATH now says: \`$(curl --silent --max-time 30 --retry 3 "$($TRAFFIC url)$VERSION_PATH" | head -c 80)\`"
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # ------------------------------------------------------------ every action
+      # One line a person or a program can read, whatever the action was.
+      - name: Say where the service stands
+        if: always() && env.TRAFFIC != ''
+        run: |
+          URL="$($TRAFFIC url)"
+          read -r CHECKED CHECKED_AT <<< "$($TRAFFIC checked)"
+          read -r PREVIOUS _ <<< "$($TRAFFIC previous)"
+          SAYS="$(curl --silent --max-time 30 --retry 3 "$URL$VERSION_PATH" | head -c 60 | tr -d '\n')"
+          echo "PIPELINE: visitors=$URL commit=${SAYS:-unknown} checked=${CHECKED:-none} checked-at=${CHECKED_AT:-none} previous=${PREVIOUS:-none}"
