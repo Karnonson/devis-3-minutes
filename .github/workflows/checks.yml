@@ -1,0 +1,59 @@
+# Fleet's Cloud Run pipeline, copied once into this project (fleet: pipelines/cloud-run.md). This copy is the
+# project's own. On every pull request and every change of main:
+#   - the project's own checks (CHECK_COMMAND in .github/pipeline.env: its tests, its lint);
+#   - the new commits read as if anyone could read the repository: a key in one of them fails the run.
+# It holds no key and asks Google for nothing: it also runs for a pull request from another copy of the
+# repository.
+name: Checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: tests, and nothing a public repository could not show
+    runs-on: ${{ vars.PIPELINE_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    steps:
+      # The whole history: the commits a change adds are read one by one.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Read the settings
+        run: |
+          grep -E '^[A-Z][A-Z0-9_]*=' .github/pipeline.env >> "$GITHUB_ENV"
+
+      # A value removed in a later commit still counts: a pushed history shows it.
+      - name: Read the new commits as if anyone could
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then RANGE="origin/$GITHUB_BASE_REF..HEAD"; else RANGE="${BEFORE:-HEAD~1}..HEAD"; fi
+          git rev-parse --verify --quiet "${RANGE%%..*}" > /dev/null || RANGE="HEAD~1..HEAD"
+          python3 .github/secrets.py range . "$RANGE" > "$RUNNER_TEMP/found" || true
+          # A known shape (a provider's key, a private key) fails the run. A guess from a name (a long value
+          # given to something called KEY or TOKEN) is said, and left to the person reading.
+          grep "a value given to a name" "$RUNNER_TEMP/found" | sed 's/^/::warning::Read this line: /' || true
+          if grep -v "a value given to a name" "$RUNNER_TEMP/found" > "$RUNNER_TEMP/keys"; then
+            sed 's/^/::error::A key in a commit: /' "$RUNNER_TEMP/keys"
+            echo "::error::Take it out of the branch's history, and change the key where it was issued: it was written down."
+            exit 1
+          fi
+        env:
+          BEFORE: ${{ github.event.before }}
+
+      - name: Run the project's own checks
+        if: env.CHECK_COMMAND != ''
+        run: bash -euo pipefail -c "$CHECK_COMMAND"
+
+      - name: Say that the project has no check of its own
+        if: env.CHECK_COMMAND == ''
+        run: echo "::warning::CHECK_COMMAND is empty in .github/pipeline.env — no test ran here."
