@@ -83,6 +83,12 @@ jobs:
           service_account: ${{ env.PREVIEW_IDENTITY }}
 
       # A runner of the project's own may lack Google's and GitHub's command-line tools; GitHub's has both.
+      - name: "Trial: take the tools away, as on a bare runner"
+        run: |
+          sudo apt-get remove -y -qq gh google-cloud-cli >/dev/null 2>&1 || true
+          for t in gh gcloud; do while command -v $t >/dev/null; do sudo rm -f "$(command -v $t)"; done; done
+          command -v gh gcloud || echo "both gone"
+
       - name: Look for the tools
         if: env.PREVIEW_SERVICE != ''
         run: |
