@@ -117,10 +117,25 @@ def after_open() -> int:
     return 0
 
 
+HISTORY = 100                     # how many successful runs of release.yml are read, newest first
+
+
+def release_runs() -> list[dict]:
+    return json.loads(gh("run", "list", "--workflow", "release.yml", "--status", "success", "--limit", str(HISTORY),
+                         "--json", "displayTitle,updatedAt", check=False) or "[]")
+
+
+def never_opened() -> bool:
+    """Nothing was ever opened to the visitors: a new project, still on its placeholder page. Said only
+    when the whole history was read and holds no opening; a history too long to read whole is a project
+    that has released, and a failure there is always an alert."""
+    runs = release_runs()
+    return len(runs) < HISTORY and not any(run.get("displayTitle", "").startswith("open") for run in runs)
+
+
 def opened_lately() -> bool:
     """A release was opened less than GO_BACK_WITHIN_MINUTES ago, and nobody went back since."""
-    runs = json.loads(gh("run", "list", "--workflow", "release.yml", "--status", "success", "--limit", "30",
-                         "--json", "displayTitle,updatedAt", check=False) or "[]")
+    runs = release_runs()
     for run in runs:                             # newest first
         title = run.get("displayTitle", "")
         if title.startswith("go-back"):
@@ -146,6 +161,9 @@ def scheduled() -> int:
                 gh("issue", "comment", number, "--body", f"The site answers again since {NOW.strftime(STAMP)}. Nothing was changed by the pipeline.")
                 gh("issue", "close", number)
         print("The site answers." + (f" {len(ongoing)} issue(s) updated." if ongoing else ""))
+        return 0
+    if never_opened():
+        print(f"Nothing was ever opened to the visitors here: not an alert yet ({bad}).")
         return 0
     print(f"::warning::The site is failing: {bad}")
     if ongoing:                                  # already said: no new notice while it lasts
