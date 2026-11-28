@@ -45,7 +45,7 @@ jobs:
 
       - name: Read the settings
         run: |
-          grep -E '^[A-Z_]+=' .github/pipeline.env >> "$GITHUB_ENV"
+          grep -E '^[A-Z][A-Z0-9_]*=' .github/pipeline.env >> "$GITHUB_ENV"
           echo "COMMIT=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
       # The commit must be on main: a release is never built from a branch.
@@ -93,19 +93,38 @@ jobs:
         run: |
           IMAGE="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT/$IMAGE_STORE/$SERVICE:$COMMIT"
           gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
-          docker build --provenance=false --build-arg "COMMIT=$COMMIT" --tag "$IMAGE" .
+          ADDRESS="${PUBLIC_ADDRESS:-$($TRAFFIC url)}"
+          # The project's own settings: {commit} and {address} are filled in.
+          fill() { local v="${1#*=}"; v="${v//\{commit\}/$COMMIT}"; printf '%s' "${v//\{address\}/$ADDRESS}"; }
+          build=()
+          while IFS= read -r line; do
+            name="${line%%=*}"; build+=(--build-arg "${name#BUILD_}=$(fill "$line")")
+          done < <(env | grep -E '^BUILD_[A-Z0-9_]+=' || true)
+          docker build --provenance=false --build-arg "COMMIT=$COMMIT" "${build[@]}" --tag "$IMAGE" .
           docker push "$IMAGE"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          echo "ADDRESS=$ADDRESS" >> "$GITHUB_ENV"
 
       - name: Put it online with no visitor
         if: inputs.action == 'release'
         run: |
           # An old pass must not open a new, unchecked release.
           $RUN --remove-tags checked 2>/dev/null || true
+          # The project's own settings: {commit} and {address} are filled in.
+          fill() { local v="${1#*=}"; v="${v//\{commit\}/$COMMIT}"; printf '%s' "${v//\{address\}/$ADDRESS}"; }
+          # Plain settings (SET_<NAME>) and the secrets the service reads (READS). With none of them, the
+          # service keeps the settings it has.
+          extra=(); sets=""; refs=""
+          while IFS= read -r line; do
+            name="${line%%=*}"; sets="$sets@@${name#SET_}=$(fill "$line")"
+          done < <(env | grep -E '^SET_[A-Z0-9_]+=' || true)
+          for pair in $READS; do refs="$refs,${pair%%=*}=${pair#*=}:latest"; done
+          [ -z "$sets" ] || extra+=(--update-env-vars "^@@^${sets#@@}")
+          [ -z "$refs" ] || extra+=(--update-secrets "${refs#,}")
           gcloud run deploy "$SERVICE" --project "$GCP_PROJECT" --region "$GCP_REGION" \
             --image "$IMAGE" --service-account "$RUN_IDENTITY" \
             --memory "$MEMORY" --max-instances "$MAX_INSTANCES" --min-instances 0 \
-            --no-traffic --tag candidate --quiet
+            "${extra[@]}" --no-traffic --tag candidate --quiet
 
       - name: Check it at its own address
         if: inputs.action == 'release'
