@@ -51,7 +51,7 @@ jobs:
 
       - name: Read the settings
         run: |
-          grep -E '^[A-Z_]+=' .github/pipeline.env >> "$GITHUB_ENV"
+          grep -E '^[A-Z][A-Z0-9_]*=' .github/pipeline.env >> "$GITHUB_ENV"
 
       # The settings are in the environment from here on; the file is never run as a script.
       - name: Work out where the previews live
@@ -77,16 +77,35 @@ jobs:
         if: github.event.action != 'closed'
         run: |
           gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
-          docker build --provenance=false --build-arg "COMMIT=$HEAD" --tag "$STORE:pr-$PR-$HEAD" .
+          URL="$(gcloud run services describe "$PREVIEW_SERVICE" $ON --format 'value(status.url)')"
+          ADDRESS="https://pr-$PR---${URL#https://}"
+          echo "ADDRESS=$ADDRESS" >> "$GITHUB_ENV"
+          # The project's own settings: {commit} and {address} are filled in.
+          fill() { local v="${1#*=}"; v="${v//\{commit\}/$HEAD}"; printf '%s' "${v//\{address\}/$ADDRESS}"; }
+          build=()
+          while IFS= read -r line; do
+            name="${line%%=*}"; build+=(--build-arg "${name#PREVIEW_BUILD_}=$(fill "$line")")
+          done < <(env | grep -E '^PREVIEW_BUILD_[A-Z0-9_]+=' || true)
+          docker build --provenance=false --build-arg "COMMIT=$HEAD" "${build[@]}" --tag "$STORE:pr-$PR-$HEAD" .
           docker push "$STORE:pr-$PR-$HEAD"
 
       - name: Put it online at the pull request's address
         if: github.event.action != 'closed'
         run: |
+          # The project's own settings: {commit} and {address} are filled in.
+          fill() { local v="${1#*=}"; v="${v//\{commit\}/$HEAD}"; printf '%s' "${v//\{address\}/$ADDRESS}"; }
+          # Plain settings (PREVIEW_SET_<NAME>) and the secrets a preview reads (PREVIEW_READS).
+          extra=(); sets=""; refs=""
+          while IFS= read -r line; do
+            name="${line%%=*}"; sets="$sets@@${name#PREVIEW_SET_}=$(fill "$line")"
+          done < <(env | grep -E '^PREVIEW_SET_[A-Z0-9_]+=' || true)
+          for pair in $PREVIEW_READS; do refs="$refs,${pair%%=*}=${pair#*=}:latest"; done
+          [ -z "$sets" ] || extra+=(--update-env-vars "^@@^${sets#@@}")
+          [ -z "$refs" ] || extra+=(--update-secrets "${refs#,}")
           gcloud run deploy "$PREVIEW_SERVICE" $ON --image "$STORE:pr-$PR-$HEAD" \
             --service-account "$PREVIEW_RUN_IDENTITY" --memory "$MEMORY" --max-instances "$MAX_INSTANCES" \
             --min-instances 0 --revision-suffix "pr-$PR-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" \
-            --no-traffic --tag "pr-$PR" --quiet
+            "${extra[@]}" --no-traffic --tag "pr-$PR" --quiet
 
       - name: Check it, and say where it is
         if: github.event.action != 'closed'
