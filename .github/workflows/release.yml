@@ -62,6 +62,16 @@ jobs:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.RELEASE_IDENTITY }}
 
+      # A runner of the project's own may lack Google's and GitHub's command-line tools; GitHub's has both.
+      - name: Look for the tools
+        run: |
+          if command -v gcloud >/dev/null; then echo "HAVE_GCLOUD=1" >> "$GITHUB_ENV"; fi
+          command -v gh >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq gh; }
+
+      - name: Install gcloud
+        if: env.HAVE_GCLOUD != '1'
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
       # Prints "<label> <revision> <percent> <address>" for each line of the service's traffic.
       - name: Read where the service stands
         run: |
@@ -94,8 +104,8 @@ jobs:
           IMAGE="$GCP_REGION-docker.pkg.dev/$GCP_PROJECT/$IMAGE_STORE/$SERVICE:$COMMIT"
           gcloud auth configure-docker "$GCP_REGION-docker.pkg.dev" --quiet
           ADDRESS="${PUBLIC_ADDRESS:-$($TRAFFIC url)}"
-          # The project's own settings: {commit} and {address} are filled in.
-          fill() { local v="${1#*=}"; v="${v//\{commit\}/$COMMIT}"; printf '%s' "${v//\{address\}/$ADDRESS}"; }
+          # The project's own settings: {commit}, {address} and {time} are filled in.
+          fill() { local v="${1#*=}"; v="${v//\{commit\}/$COMMIT}"; v="${v//\{time\}/$(date -u +%Y-%m-%dT%H:%M:%SZ)}"; printf '%s' "${v//\{address\}/$ADDRESS}"; }
           build=()
           while IFS= read -r line; do
             name="${line%%=*}"; build+=(--build-arg "${name#BUILD_}=$(fill "$line")")
@@ -110,8 +120,8 @@ jobs:
         run: |
           # An old pass must not open a new, unchecked release.
           $RUN --remove-tags checked 2>/dev/null || true
-          # The project's own settings: {commit} and {address} are filled in.
-          fill() { local v="${1#*=}"; v="${v//\{commit\}/$COMMIT}"; printf '%s' "${v//\{address\}/$ADDRESS}"; }
+          # The project's own settings: {commit}, {address} and {time} are filled in.
+          fill() { local v="${1#*=}"; v="${v//\{commit\}/$COMMIT}"; v="${v//\{time\}/$(date -u +%Y-%m-%dT%H:%M:%SZ)}"; printf '%s' "${v//\{address\}/$ADDRESS}"; }
           # Plain settings (SET_<NAME>) and the secrets the service reads (READS). When the project gives
           # any, they are the whole list: a setting no longer written is removed, and a name left by a
           # release that failed does not stay. With none of them, the service keeps the settings it has.

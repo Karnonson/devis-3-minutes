@@ -65,6 +65,16 @@ jobs:
           workload_identity_provider: ${{ env.PREVIEW_WIF_PROVIDER }}
           service_account: ${{ env.PREVIEW_IDENTITY }}
 
+      # A runner of the project's own may lack Google's and GitHub's command-line tools; GitHub's has both.
+      - name: Look for the tools
+        run: |
+          if command -v gcloud >/dev/null; then echo "HAVE_GCLOUD=1" >> "$GITHUB_ENV"; fi
+          command -v gh >/dev/null || { sudo apt-get update -qq && sudo apt-get install -y -qq gh; }
+
+      - name: Install gcloud
+        if: env.HAVE_GCLOUD != '1'
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3.0.1
+
       # The first call to Google. A refusal must stop here, saying so.
       - name: Read where the previews stand
         run: |
@@ -80,8 +90,8 @@ jobs:
           URL="$(gcloud run services describe "$PREVIEW_SERVICE" $ON --format 'value(status.url)')"
           ADDRESS="https://pr-$PR---${URL#https://}"
           echo "ADDRESS=$ADDRESS" >> "$GITHUB_ENV"
-          # The project's own settings: {commit} and {address} are filled in.
-          fill() { local v="${1#*=}"; v="${v//\{commit\}/$HEAD}"; printf '%s' "${v//\{address\}/$ADDRESS}"; }
+          # The project's own settings: {commit}, {address} and {time} are filled in.
+          fill() { local v="${1#*=}"; v="${v//\{commit\}/$HEAD}"; v="${v//\{time\}/$(date -u +%Y-%m-%dT%H:%M:%SZ)}"; printf '%s' "${v//\{address\}/$ADDRESS}"; }
           build=()
           while IFS= read -r line; do
             name="${line%%=*}"; build+=(--build-arg "${name#PREVIEW_BUILD_}=$(fill "$line")")
@@ -92,8 +102,8 @@ jobs:
       - name: Put it online at the pull request's address
         if: github.event.action != 'closed'
         run: |
-          # The project's own settings: {commit} and {address} are filled in.
-          fill() { local v="${1#*=}"; v="${v//\{commit\}/$HEAD}"; printf '%s' "${v//\{address\}/$ADDRESS}"; }
+          # The project's own settings: {commit}, {address} and {time} are filled in.
+          fill() { local v="${1#*=}"; v="${v//\{commit\}/$HEAD}"; v="${v//\{time\}/$(date -u +%Y-%m-%dT%H:%M:%SZ)}"; printf '%s' "${v//\{address\}/$ADDRESS}"; }
           # Plain settings (PREVIEW_SET_<NAME>) and the secrets a preview reads (PREVIEW_READS).
           extra=(); sets=""; refs=""
           while IFS= read -r line; do
