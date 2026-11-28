@@ -1,5 +1,5 @@
 // Ce que le dépôt garantit hors de la page : le démarrage du conteneur ne retire jamais la page d'accueil,
-// et git refuse un fichier d'environnement. Lancer : node --test tests/depot.test.js (environ 3 s)
+// git refuse un fichier d'environnement, et la recherche de clés trouve une clé. Lancer : node --test tests/depot.test.js (environ 3 s)
 'use strict';
 
 const test = require('node:test');
@@ -41,4 +41,40 @@ test("git ignore .env et tout .env*, sauf .env.example", () => {
   assert.ok(!ignore('.env.example'), '.env.example doit rester suivi');
   assert.ok(!ignore('index.html'), 'index.html doit rester suivi');
   assert.match(execFileSync('git', ['-C', RACINE, 'ls-files', '.gitignore'], { encoding: 'utf8' }), /\.gitignore/);
+});
+
+test("la recherche de clés refuse un commit qui en porte une, sans l'écrire, et laisse passer un commit propre", () => {
+  // Un dépôt jetable ; la clé, inventée, n'est assemblée qu'ici, pour qu'aucun fichier suivi n'en ait la forme.
+  const depot = fs.mkdtempSync(path.join(os.tmpdir(), 'devis-3-minutes-cles-'));
+  const env = { PATH: process.env.PATH, HOME: depot, GIT_CONFIG_GLOBAL: os.devNull, GIT_CONFIG_NOSYSTEM: '1' };
+  const git = (...a) => execFileSync('git', ['-C', depot, '-c', 'user.name=Essai', '-c', 'user.email=essai@example.test',
+    '-c', 'commit.gpgsign=false', ...a], { encoding: 'utf8', env }).trim();
+  const cherche = (plage) => spawnSync('python3', [path.join(RACINE, '.github', 'secrets.py'), 'range', depot, plage],
+    { encoding: 'utf8', env });
+  try {
+    git('init', '-q');
+    fs.writeFileSync(path.join(depot, 'notes.txt'), 'début\n');
+    git('add', '.'); git('commit', '-q', '-m', 'début');
+    const debut = git('rev-parse', 'HEAD');
+    fs.appendFileSync(path.join(depot, 'notes.txt'), 'une ligne sans clé\n');
+    git('commit', '-q', '-am', 'propre');
+    const propre = git('rev-parse', 'HEAD');
+
+    const r0 = cherche(`${debut}..${propre}`);
+    assert.equal(r0.status, 0, r0.stdout + r0.stderr);
+    assert.equal(r0.stdout, '');
+
+    const cle = 'AKIA' + 'EXAMPLE'.repeat(3).slice(0, 16);
+    fs.writeFileSync(path.join(depot, 'config.txt'), `aws=${cle}\n`);
+    git('add', '.'); git('commit', '-q', '-m', 'une clé');
+    const fautif = git('rev-parse', 'HEAD');
+
+    const r1 = cherche(`${propre}..${fautif}`);
+    assert.equal(r1.status, 1, r1.stdout + r1.stderr);
+    assert.ok(r1.stdout.includes(fautif.slice(0, 10)), `le commit n'est pas nommé : ${r1.stdout}`);
+    assert.match(r1.stdout, /AWS key/);
+    assert.ok(!(r1.stdout + r1.stderr).includes(cle), 'la valeur de la clé a été écrite');
+  } finally {
+    fs.rmSync(depot, { recursive: true, force: true });
+  }
 });
